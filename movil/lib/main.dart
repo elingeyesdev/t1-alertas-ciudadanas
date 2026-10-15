@@ -10,6 +10,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = ColorScheme.fromSeed(
+
+
+      
       seedColor: const Color(0xFF176B5B),
       surface: const Color(0xFFF7F8F5),
     );
