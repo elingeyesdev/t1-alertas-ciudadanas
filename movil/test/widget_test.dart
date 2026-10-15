@@ -1,30 +1,34 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alertas_ciudadanas/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('requires an alert type and a description', (tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.tap(find.text('Enviar alerta'));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('Seleccioná un tipo de alerta.'), findsOneWidget);
+    expect(find.text('Contanos qué está pasando.'), findsOneWidget);
+    expect(find.text('Tu alerta se registró localmente.'), findsNothing);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('confirms local-only submission and resets the form', (tester) async {
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Seleccioná un tipo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bache en la calle').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('descriptionField')), 'Hay un bache grande.');
+    await tester.tap(find.text('Enviar alerta'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tu alerta se registró localmente.'), findsOneWidget);
+    expect(find.text('No se envió a ningún servidor.'), findsOneWidget);
+    expect(find.text('Hay un bache grande.'), findsNothing);
+    expect(find.text('Seleccioná un tipo'), findsOneWidget);
   });
 }
