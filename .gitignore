@@ -1,0 +1,16 @@
+# Local development artifacts
+.env
+.env.*
+!.env.example
+/vendor/
+/movil/.dart_tool/
+/movil/.packages
+/movil/.flutter-plugins*
+/movil/build/
+/movil/releases/*
+!/movil/releases/.gitkeep
+/movil/android/local.properties
+/movil/ios/Flutter/Generated.xcconfig
+/movil/ios/Flutter/flutter_export_environment.sh
+/movil/.idea/
+/movil/.vscode/
