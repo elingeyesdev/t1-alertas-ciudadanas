@@ -1,11 +1,11 @@
 {
-    "name": "alertas_ciudadanas",
-    "short_name": "alertas_ciudadanas",
+    "name": "app_alertas",
+    "short_name": "app_alertas",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "App de alertas en tiempo real",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

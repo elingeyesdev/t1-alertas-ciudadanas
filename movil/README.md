@@ -1,5 +1,19 @@
-# Mobile
+# movil/ — App Flutter (alertas_ciudadanas)
 
-Flutter application generated from the official starter with internal package name `alertas_ciudadanas`.
+App para ciudadanos (reportar incidentes, ver alertas cercanas) y autoridades
+(verificar reportes, despachar unidades y compartir su ubicación en vivo).
 
-Run `flutter pub get`, then `flutter run`. Check with `flutter analyze` and `flutter test`. Release artifacts belong in `releases/`; generated build outputs should not be committed.
+```powershell
+copy .env.example .env     # ajusta API_BASE_URL (emulador: http://10.0.2.2:8000/api)
+flutter pub get
+flutter run
+flutter analyze
+flutter test
+```
+
+- API: `lib/core/network/dio_client.dart` (Dio + token JWT).
+- Tiempo real: `lib/services/realtime_client.dart` (protocolo Pusher → Laravel Reverb).
+- Notificaciones push: opcionales, requieren `android/app/google-services.json`.
+- APKs generados: carpeta `releases/` (no se suben al repo).
+
+Guía completa en el `README.md` de la raíz del repo.
