@@ -246,3 +246,100 @@ aviso en `storage/logs/laravel.log`.
 
 - Copia tu `firebase-service-account.json` a `storage/app/` (no lo subas a Git).
 - Gmail: usa una **contraseña de aplicación** en `MAIL_PASSWORD`.
+
+## 9. Docker para el panel Blade/Tabler, API y PostgreSQL
+
+La imagen incluye Apache/PHP, dependencias PHP de producción y los assets Vite
+compilados. PostgreSQL solo es accesible por la red interna de Compose. Base,
+archivos subidos y estado de Laravel usan volúmenes nombrados distintos. El
+arranque no genera claves, ejecuta migraciones/seeders ni crea administradores.
+React, móvil y Reverb no forman parte de este despliegue; los eventos Reverb
+requieren operar ese servicio por separado.
+
+### Desarrollo local (PowerShell)
+
+1. Cree `.env.docker.local`: `Copy-Item .env.docker.local.example .env.docker.local`.
+2. Defina allí una contraseña local y `JWT_SECRET` con al menos 32 caracteres.
+3. Genere una clave de prueba sin arrancar Laravel ni conectarse a PostgreSQL:
+
+   ```powershell
+   docker run --rm php:8.5-cli php -r '$key="base64:".base64_encode(random_bytes(32)); echo $key, PHP_EOL;'
+   ```
+
+   Copie el resultado en `APP_KEY`. No lo comparta ni lo regenere para una instalación existente.
+4. Inicie: `docker compose --project-name app-local --env-file .env.docker.local -f compose.yaml -f compose.local.yaml up --build -d`.
+5. Aplique el esquema solo cuando decida hacerlo:
+   `docker compose --project-name app-local --env-file .env.docker.local -f compose.yaml -f compose.local.yaml exec app php artisan migrate --force`.
+   Nunca use `migrate:fresh` sobre datos que quiera conservar. Cree administradores
+   únicamente mediante el proceso de operador/seeder revisado para el proyecto.
+
+Panel: <http://localhost:8080/panel/login>; API: <http://localhost:8080/api>;
+Vite HMR: puerto 5173, enlazado a loopback por defecto. El código se monta desde
+`backend`; vendor, node_modules y estado de Laravel se guardan en volúmenes Docker.
+
+### Preparación de producción
+
+Copie `.env.docker.production.example` a `.env.docker.production`. Reemplace los
+marcadores con `APP_IMAGE` versionada e inmutable, `APP_KEY` estable, contraseña
+única y robusta para PostgreSQL, y `JWT_SECRET` aleatorio de 32+ caracteres. El
+archivo contiene secretos: manténgalo privado y fuera de Git.
+
+Genere `APP_KEY` una sola vez con el comando `docker run` anterior y consérvela
+para esta instalación. La imagen de producción se puede construir localmente
+(esto no la publica ni despliega):
+
+```powershell
+docker build --target production -t alertas-ciudadanas-app:1.0.0 .
+```
+
+Asigne `APP_IMAGE=alertas-ciudadanas-app:1.0.0` en el archivo privado y valide
+e inicie la configuración:
+
+```powershell
+docker compose --project-name app-production --env-file .env.docker.production -f compose.yaml -f compose.production.yaml config --quiet
+docker compose --project-name app-production --env-file .env.docker.production -f compose.yaml -f compose.production.yaml up -d
+docker compose --project-name app-production --env-file .env.docker.production -f compose.yaml -f compose.production.yaml exec app php artisan migrate --force
+```
+
+La aplicación publica `127.0.0.1:8080` por defecto, para usar un proxy inverso
+administrado por el operador. Antes de exponerla, configure TLS, confianza de
+proxy/headers reenviados y cookies seguras en la frontera del proxy y Laravel;
+Compose no configura dominio ni TLS. El contenedor conserva escritura en estado
+de Laravel y usa el usuario/arranque Apache predeterminado: endurecerlo más exige
+validar permisos, sesiones y ejecución de Apache, por eso no se declara aquí un
+filesystem de solo lectura ni capacidades retiradas. Las colas son síncronas;
+no se incluye un worker.
+
+### Operación y datos
+
+Defina una vez en PowerShell el conjunto de argumentos de Compose:
+
+```powershell
+$dc = @('--project-name', 'app-production', '--env-file', '.env.docker.production', '-f', 'compose.yaml', '-f', 'compose.production.yaml')
+docker compose @dc ps
+docker compose @dc logs app db
+docker compose @dc exec -T db sh -c 'pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" -f /tmp/alertas.dump'
+docker compose @dc cp db:/tmp/alertas.dump ./alertas.dump
+docker compose @dc exec -T db rm -f /tmp/alertas.dump
+```
+
+El formato personalizado `pg_dump -Fc` se copia como bytes mediante `docker compose cp`;
+no lo pase por una tubería de texto de PowerShell. Para probar una restauración,
+cree `.env.docker.restore-test` desde el ejemplo de producción y asígnele valores
+únicos para base, contraseña, `APP_KEY`, `JWT_SECRET` y puerto `8081`. Use un
+proyecto Compose distinto y restaure sin tocar el volumen de producción:
+
+```powershell
+Copy-Item .env.docker.production.example .env.docker.restore-test
+# Edite .env.docker.restore-test con credenciales de prueba nuevas, DB_DATABASE=alertas_restore,
+# APP_PORT=8081 y APP_IMAGE igual a la imagen local de producción.
+$test = @('--project-name', 'app-restore-test', '--env-file', '.env.docker.restore-test', '-f', 'compose.yaml', '-f', 'compose.production.yaml')
+docker compose @test up -d db
+docker compose @test cp ./alertas.dump db:/tmp/alertas.dump
+docker compose @test exec -T db pg_restore -U alertas -d alertas_restore /tmp/alertas.dump
+docker compose @test exec -T db rm -f /tmp/alertas.dump
+```
+
+Use los nombres configurados si difieren. Verifique el resultado en ese proyecto
+aislado antes de depender de las copias. Los volúmenes persistentes no son backups.
+Evite `down -v`, borrar volúmenes o reemplazar el volumen de producción al actualizar.

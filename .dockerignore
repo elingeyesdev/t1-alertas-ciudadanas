@@ -1,0 +1,31 @@
+# Start closed: only the app, Docker build files, and explicit support files enter.
+**
+!Dockerfile
+!.dockerignore
+!docker/
+!docker/**
+!backend/
+!backend/**
+
+# Runtime/local/private material must never enter the build context.
+backend/.env*
+backend/**/.env*
+backend/vendor/
+backend/**/vendor/
+backend/node_modules/
+backend/**/node_modules/
+backend/tests/
+backend/public/hot
+backend/public/build/
+backend/storage/
+backend/storage/**
+backend/bootstrap/cache/
+backend/bootstrap/cache/**
+backend/**/service-account*.json
+backend/**/firebase*.json
+backend/**/auth.json
+backend/**/credentials.json
+backend/**/credentials/**
+backend/**/*.pem
+backend/**/*.key
+backend/**/*.p12

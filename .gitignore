@@ -2,7 +2,14 @@
 .env
 .env.*
 !.env.example
+!.env.docker.local.example
+!.env.docker.production.example
 /vendor/
+
+# Generated browser-test snapshots and screenshots
+/.playwright-cli/
+/output/playwright/
+
 /movil/.dart_tool/
 /movil/.packages
 /movil/.flutter-plugins*
