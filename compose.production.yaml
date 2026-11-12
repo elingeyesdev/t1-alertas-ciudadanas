@@ -1,0 +1,10 @@
+services:
+  app:
+    image: ${APP_IMAGE:?Set APP_IMAGE to the immutable, versioned application image}
+    build: !reset null
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      SESSION_SECURE_COOKIE: "true"
+    security_opt:
+      - no-new-privileges:true

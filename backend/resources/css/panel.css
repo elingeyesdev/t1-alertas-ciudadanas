@@ -1,0 +1,65 @@
+@import '@tabler/core/dist/css/tabler.min.css';
+
+:root {
+    --panel-ink: #182433;
+    --panel-muted: #667487;
+    --panel-line: #e5eaf0;
+    --panel-brand: #206bc4;
+    --panel-surface: #ffffff;
+    --panel-canvas: #f5f7fa;
+}
+
+body.panel-page, body.panel-login-page { min-height: 100vh; color: var(--panel-ink); background: var(--panel-canvas); }
+.panel-navbar { min-height: 76px; background: var(--panel-surface); border-bottom: 1px solid var(--panel-line); }
+.panel-navbar .container-xl { display: flex; justify-content: space-between; gap: 1rem; }
+.navbar-brand { display: inline-flex; align-items: center; gap: .75rem; font-weight: 650; color: var(--panel-ink); }
+.brand-mark, .welcome-icon { display: inline-grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 12px; background: #e8f1fb; color: var(--panel-brand); font-size: .85rem; font-weight: 750; letter-spacing: .02em; }
+.brand-title { font-size: .98rem; }
+.identity-label { display: grid; text-align: right; line-height: 1.35; }
+.identity-name { font-size: .875rem; font-weight: 600; }
+.identity-role { color: var(--panel-muted); font-size: .75rem; }
+.panel-main { min-height: calc(100vh - 148px); padding-top: 2.5rem; padding-bottom: 3rem; }
+.page-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 1.75rem; }
+.page-heading h1 { margin: 0 0 .5rem; font-size: clamp(1.6rem, 4vw, 2.15rem); letter-spacing: -.035em; }
+.eyebrow { margin: 0 0 .5rem; color: var(--panel-brand); font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.status-chip { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .7rem; border: 1px solid #dcefe5; border-radius: 999px; background: #f4fbf7; color: #24734c; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #2fb344; }
+.welcome-card, .next-steps { padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid var(--panel-line); border-radius: 14px; background: var(--panel-surface); box-shadow: 0 2px 8px #18243308; }
+.welcome-card { display: flex; align-items: flex-start; gap: 1rem; }
+.welcome-icon { width: 52px; height: 52px; border-radius: 15px; }
+.welcome-card h2, .next-steps h2 { margin: 0 0 .5rem; font-size: 1.2rem; font-weight: 650; }
+.next-steps { margin-top: 1rem; }
+.next-steps h2 { font-size: 1rem; }
+.panel-footer { display: flex; justify-content: space-between; gap: 1rem; padding-top: 1rem; padding-bottom: 1.25rem; color: var(--panel-muted); font-size: .8rem; }
+.skip-link { position: absolute; z-index: 10; top: .5rem; left: .5rem; padding: .7rem; transform: translateY(-160%); background: #fff; }
+.skip-link:focus { transform: translateY(0); }
+.login-shell { display: grid; min-height: 100vh; grid-template-columns: minmax(300px, .9fr) minmax(360px, 1.1fr); }
+.login-brand { display: flex; flex-direction: column; justify-content: space-between; padding: clamp(2rem, 6vw, 5rem); background: #f0f5fb; }
+.login-brand .brand-lockup { display: inline-flex; align-items: center; gap: .8rem; color: var(--panel-ink); font-size: 1rem; font-weight: 700; text-decoration: none; }
+.login-intro { max-width: 440px; padding: 3rem 0; }
+.login-intro h1 { margin: 0 0 1rem; font-size: clamp(2.1rem, 4vw, 3.2rem); font-weight: 700; letter-spacing: -.045em; line-height: 1.12; }
+.login-intro p:last-child, .login-footnote { color: var(--panel-muted); }
+.login-footnote { margin: 0; font-size: .85rem; }
+.login-form-panel { display: grid; place-items: center; padding: 2rem; }
+.login-card { width: min(100%, 430px); padding: clamp(1.5rem, 4vw, 2.5rem); border: 1px solid var(--panel-line); border-radius: 16px; background: #fff; box-shadow: 0 12px 36px #1824330a; }
+.login-card-heading { margin-bottom: 1.75rem; }
+.login-card-heading h2 { margin: 0 0 .5rem; font-size: 1.55rem; font-weight: 700; }
+.login-card-heading > p:last-child, .login-help { color: var(--panel-muted); }
+.login-form .form-label { font-weight: 600; }
+.login-form .form-control { min-height: 46px; }
+.login-form .btn { min-height: 46px; font-weight: 600; }
+.login-help { margin: 1.5rem 0 0; text-align: center; font-size: .82rem; }
+@media (max-width: 767.98px) {
+    .login-shell { grid-template-columns: 1fr; }
+    .login-brand { min-height: 240px; padding: 1.5rem; }
+    .login-intro { padding: 2.5rem 0 1rem; }
+    .login-intro h1 { max-width: 540px; font-size: 2rem; }
+    .login-footnote { display: none; }
+    .login-form-panel { padding: 1.25rem; }
+    .panel-navbar .container-xl { align-items: center; }
+    .identity-label { display: none; }
+    .panel-main { padding-top: 1.75rem; }
+    .page-heading { align-items: flex-start; flex-direction: column; }
+    .panel-footer { flex-direction: column; gap: .25rem; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }

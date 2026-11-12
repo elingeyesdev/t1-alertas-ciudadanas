@@ -25,8 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
         ]);
-        // API sin sesiones: nunca redirigir a una pantalla de login
-        $middleware->redirectGuestsTo(fn () => null);
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('panel*') ? route('panel.login') : null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -1,0 +1,41 @@
+services:
+  app:
+    image: alertas-ciudadanas-app:local
+    build:
+      target: local
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      SESSION_SECURE_COOKIE: "false"
+      LOG_CHANNEL: stderr
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker/empty.env:/var/www/html/.env:ro
+      - local-vendor:/var/www/html/vendor
+      - local-public-build:/var/www/html/public/build
+      - uploads:/var/www/html/storage/app/public
+
+  vite:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "${VITE_BIND_ADDRESS:-127.0.0.1}:${VITE_PORT:-5173}:5173"
+    volumes:
+      - ./backend:/app
+      - ./docker/empty.env:/app/.env:ro
+      - ./docker/vite-env:/vite-env:ro
+      - local-node-modules:/app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_DOCKER: "true"
+      VITE_HMR_HOST: localhost
+      VITE_HMR_CLIENT_PORT: ${VITE_PORT:-5173}
+      VITE_ENV_DIR: /vite-env
+
+volumes:
+  local-vendor:
+  local-public-build:
+  local-node-modules:
