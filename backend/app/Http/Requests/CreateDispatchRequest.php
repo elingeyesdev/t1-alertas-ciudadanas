@@ -9,7 +9,6 @@ class CreateDispatchRequest extends ApiRequest
         return [
             'reportId' => ['required', 'integer'],
             'destinationId' => ['required', 'integer'],
-            'userId' => ['required', 'uuid'],
         ];
     }
 }

@@ -23,9 +23,9 @@ class AuthTest extends ApiTestCase
 
         // login incorrecto
         $this->postJson('/api/auth/login', ['phone' => '71234567', 'password' => 'mala123'])
-            ->assertStatus(400)->assertJsonPath('message', 'Contrasena Incorrecta');
+            ->assertStatus(400)->assertJsonPath('message', 'Teléfono o contraseña incorrectos');
         $this->postJson('/api/auth/login', ['phone' => '79999999', 'password' => 'x'])
-            ->assertStatus(404);
+            ->assertStatus(400)->assertJsonPath('message', 'Teléfono o contraseña incorrectos');
 
         $login = $this->postJson('/api/auth/login', ['phone' => '71234567', 'password' => 'secreto1'])
             ->assertCreated()->json();

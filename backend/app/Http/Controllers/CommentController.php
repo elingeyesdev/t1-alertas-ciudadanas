@@ -11,7 +11,9 @@ class CommentController extends Controller
 
     public function storeReply(CreateCommentRequest $request, int $id)
     {
-        return $this->comments->reply($id, $request->validated())->response()->setStatusCode(201);
+        $data = ['creatorId' => $request->user()->id] + $request->validated();
+
+        return $this->comments->reply($id, $data)->response()->setStatusCode(201);
     }
 
     public function replies(int $id)

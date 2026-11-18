@@ -7,7 +7,7 @@ class CreateReportRequest extends ApiRequest
 {
     protected function prepareForValidation(): void
     {
-        $this->clean(['description', 'zone', 'userId']);
+        $this->clean(['description', 'zone']);
     }
 
     public function rules(): array
@@ -18,7 +18,6 @@ class CreateReportRequest extends ApiRequest
             'description' => ['required', 'string', 'max:250'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'userId' => ['required', 'uuid'],
             'zone' => ['nullable', 'string', 'max:255'],
         ];
     }
