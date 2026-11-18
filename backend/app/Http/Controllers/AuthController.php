@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
-use App\Http\Requests\RegisterUserRequest;
+use App\Http\Requests\PublicRegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Role;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 
@@ -12,10 +13,13 @@ class AuthController extends Controller
 {
     public function __construct(private readonly AuthService $auth) {}
 
-    /** POST /api/auth/register (público) */
-    public function register(RegisterUserRequest $request)
+    /** POST /api/auth/register (público): el rol siempre es "usuario" (ciudadano). */
+    public function register(PublicRegisterRequest $request)
     {
-        return response()->json($this->auth->register($request->validated()), 201);
+        $data = $request->validated();
+        $data['roleId'] = Role::where('name', 'usuario')->value('id');
+
+        return response()->json($this->auth->register($data), 201);
     }
 
     /** POST /api/auth/login (público) */

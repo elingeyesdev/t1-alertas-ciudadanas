@@ -9,6 +9,11 @@ use Throwable;
 
 class AuthService
 {
+    public const INVALID_CREDENTIALS = 'Teléfono o contraseña incorrectos';
+
+    /** Hash bcrypt de una contraseña que nadie usa (solo para igualar tiempos). */
+    private const DUMMY_HASH = '$2y$12$BhmFTv8XTcqK3VCACdIAoOw3obwMpk8crKU7QwF9ByvRNkzwdKs3C';
+
     public function __construct(
         private readonly UserService $users,
         private readonly JwtService $jwt,
@@ -18,11 +23,13 @@ class AuthService
     public function validateUser(string $phone, string $password): User
     {
         $user = $this->users->findByPhone($phone);
-        if (! $user) {
-            abort(404, 'usuario no encontrado');
-        }
-        if (! Hash::check($password, $user->password)) {
-            abort(400, 'Contrasena Incorrecta');
+
+        // Se compara la contraseña aunque el teléfono no exista (con un hash de
+        // relleno) para que el tiempo de respuesta no revele qué teléfonos están
+        // registrados, y el mensaje es el mismo en los dos casos.
+        $valid = Hash::check($password, $user?->password ?? self::DUMMY_HASH);
+        if (! $user || ! $valid) {
+            abort(400, self::INVALID_CREDENTIALS);
         }
 
         return $user;

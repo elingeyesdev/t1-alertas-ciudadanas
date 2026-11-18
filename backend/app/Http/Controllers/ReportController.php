@@ -7,6 +7,7 @@ use App\Http\Requests\CreateReportRequest;
 use App\Http\Requests\ImageUploadRequest;
 use App\Http\Requests\NearbyReportsRequest;
 use App\Http\Requests\SimilarReportsRequest;
+use App\Models\Report;
 use App\Services\CommentService;
 use App\Services\ReportService;
 use Illuminate\Http\Request;
@@ -21,18 +22,28 @@ class ReportController extends Controller
     /** POST /api/reports (multipart/form-data) */
     public function store(CreateReportRequest $request)
     {
-        return $this->reports->create($request->validated(), $request->file('image'))
+        // El creador es siempre el usuario del token; un "userId" enviado por el cliente se ignora.
+        $data = ['userId' => $request->user()->id] + $request->validated();
+
+        return $this->reports->create($data, $request->file('image'))
             ->response()->setStatusCode(201);
     }
 
     public function storeComment(CreateCommentRequest $request, int $id)
     {
-        return $this->comments->create($id, $request->validated())->response()->setStatusCode(201);
+        $data = ['creatorId' => $request->user()->id] + $request->validated();
+
+        return $this->comments->create($id, $data)->response()->setStatusCode(201);
     }
 
-    public function uploadImage(ImageUploadRequest $request, int $id, string $userId)
+    /**
+     * POST /api/reports/{id}/images. La ruta antigua .../images/{userId} sigue
+     * funcionando para no romper la app, pero ese id se ignora: la foto queda a
+     * nombre del usuario del token.
+     */
+    public function uploadImage(ImageUploadRequest $request, int $id)
     {
-        return $this->reports->addImage($id, $userId, $request->file('image'))
+        return $this->reports->addImage($id, $request->user()->id, $request->file('image'))
             ->response()->setStatusCode(201);
     }
 
@@ -95,18 +106,38 @@ class ReportController extends Controller
         return $this->comments->findByReport($id);
     }
 
-    public function resolve(int $id)
+    public function resolve(Request $request, int $id)
     {
+        $this->ensureCreatorOrStaff($request, $id);
+
         return $this->reports->resolveReport($id);
     }
 
-    public function reactivate(int $id)
+    public function reactivate(Request $request, int $id)
     {
+        $this->ensureCreatorOrStaff($request, $id);
+
         return $this->reports->reactivateReport($id);
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
+        $this->ensureCreatorOrStaff($request, $id);
+
         return $this->reports->remove($id);
+    }
+
+    /**
+     * Resolver, reactivar o eliminar: solo quien creó el reporte, una autoridad
+     * o un administrador. Si el reporte no existe, el servicio responde 404.
+     */
+    private function ensureCreatorOrStaff(Request $request, int $id): void
+    {
+        $report = Report::withTrashed()->find($id, ['id', 'creator_id']);
+        if (! $report || $this->isStaff($request->user())) {
+            return;
+        }
+
+        abort_unless($report->creator_id === $request->user()->id, 403, 'Solo quien creó el reporte, una autoridad o un administrador puede hacerlo');
     }
 }

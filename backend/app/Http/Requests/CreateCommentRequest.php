@@ -12,7 +12,6 @@ class CreateCommentRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'creatorId' => ['required', 'uuid'],
             'text' => ['required', 'string', 'max:250'],
         ];
     }

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Mail\AuthorityCredentialsMail;
 use App\Mail\UserMessageMail;
-use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
 class UsersTest extends ApiTestCase
@@ -49,9 +48,10 @@ class UsersTest extends ApiTestCase
         $admin = $this->makeUser(3);
         $user = $this->makeUser(1, ['password' => 'vieja123']);
 
-        $this->asUser($user)->getJson('/api/users')->assertOk()->assertJsonCount(2);
+        $this->asUser($user)->getJson('/api/users')->assertStatus(403); // listado solo admin (#9)
+        $this->asUser($admin)->getJson('/api/users')->assertOk()->assertJsonCount(2);
         $this->asUser($user)->getJson("/api/users/{$user->id}")->assertOk()->assertJsonPath('id', $user->id);
-        $this->asUser($user)->getJson('/api/users/00000000-0000-0000-0000-000000000000')->assertStatus(404);
+        $this->asUser($admin)->getJson('/api/users/00000000-0000-0000-0000-000000000000')->assertStatus(404);
         $this->asUser($user)->getJson('/api/users/no-es-uuid')->assertStatus(404);
 
         $this->asUser($user)->patchJson("/api/users/{$user->id}", ['first_name' => ' NUEVO '])

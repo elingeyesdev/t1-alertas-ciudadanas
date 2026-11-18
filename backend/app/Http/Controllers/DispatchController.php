@@ -15,7 +15,7 @@ class DispatchController extends Controller
         return $this->dispatches->create(
             (int) $request->input('reportId'),
             (int) $request->input('destinationId'),
-            $request->input('userId'),
+            $request->user()->id, // quien atiende es el usuario del token
         )->response()->setStatusCode(201);
     }
 

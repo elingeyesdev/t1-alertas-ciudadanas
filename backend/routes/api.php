@@ -42,8 +42,8 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('users')->controller(UserController::class)->group(function () {
         Route::post('/', 'store')->middleware('role:admin');              // usado por la web (CreateUserSheet)
         Route::post('authority', 'createAuthority')->middleware('role:admin');
-        Route::get('/', 'index');
-        Route::get('{id}', 'show')->whereUuid('id');
+        Route::get('/', 'index')->middleware('role:admin');
+        Route::get('{id}', 'show')->whereUuid('id'); // propio o admin (se revisa en el controlador)
         Route::patch('{id}', 'update')->whereUuid('id');
         Route::patch('{id}/fcm-token', 'updateFcmToken')->whereUuid('id');
         Route::patch('{id}/location', 'updateLocation')->whereUuid('id');
@@ -52,7 +52,7 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Perfil de autoridad (el {id} es el id del USUARIO)
-    Route::patch('authority-profile/{id}', [AuthorityProfileController::class, 'update'])->whereUuid('id');
+    Route::patch('authority-profile/{id}', [AuthorityProfileController::class, 'update'])->whereUuid('id')->middleware('role:admin');
 
     // Roles
     Route::prefix('roles')->controller(RoleController::class)->group(function () {
@@ -72,7 +72,7 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('reports')->controller(ReportController::class)->group(function () {
         Route::post('/', 'store');
         Route::get('/', 'index');
-        Route::get('with-deleted', 'withDeleted');
+        Route::get('with-deleted', 'withDeleted')->middleware('role:admin');
         Route::get('nearby', 'nearby');
         Route::get('similars', 'similars');
         Route::get('user/{userId}', 'byUser')->whereUuid('userId');
@@ -80,7 +80,8 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', 'destroy')->whereNumber('id');
         Route::post('{id}/comments', 'storeComment')->whereNumber('id');
         Route::get('{id}/comments', 'comments')->whereNumber('id');
-        Route::post('{id}/images/{userId}', 'uploadImage')->whereNumber('id')->whereUuid('userId');
+        Route::post('{id}/images', 'uploadImage')->whereNumber('id');
+        Route::post('{id}/images/{ignoredUserId}', 'uploadImage')->whereNumber('id'); // compatibilidad con la app actual
         Route::patch('{id}/verify', 'verify')->whereNumber('id')->middleware('role:admin,autoridad');
         Route::patch('{id}/resolve', 'resolve')->whereNumber('id');
         Route::patch('{id}/reactivate', 'reactivate')->whereNumber('id');
@@ -96,18 +97,18 @@ Route::middleware('auth:api')->group(function () {
     // Estaciones de emergencia
     Route::prefix('emergency-stations')->controller(EmergencyStationController::class)->group(function () {
         Route::get('/', 'index');
-        Route::post('/', 'store');
-        Route::patch('{id}', 'update')->whereNumber('id');
-        Route::delete('{id}', 'destroy')->whereNumber('id');
+        Route::post('/', 'store')->middleware('role:admin');
+        Route::patch('{id}', 'update')->whereNumber('id')->middleware('role:admin');
+        Route::delete('{id}', 'destroy')->whereNumber('id')->middleware('role:admin');
     });
 
     // Despachos
-    Route::post('dispatches', [DispatchController::class, 'store']);
-    Route::patch('dispatches/{id}/state', [DispatchController::class, 'updateState'])->whereNumber('id');
+    Route::post('dispatches', [DispatchController::class, 'store'])->middleware('role:autoridad,admin');
+    Route::patch('dispatches/{id}/state', [DispatchController::class, 'updateState'])->whereNumber('id')->middleware('role:autoridad,admin');
 
     // Correo
-    Route::post('mail/{id}', [MailController::class, 'send'])->whereUuid('id');
-    Route::post('mail/{id}/resend-credentials', [MailController::class, 'resendCredentials'])->whereUuid('id');
+    Route::post('mail/{id}', [MailController::class, 'send'])->whereUuid('id')->middleware('role:admin');
+    Route::post('mail/{id}/resend-credentials', [MailController::class, 'resendCredentials'])->whereUuid('id')->middleware('role:admin');
 
     // Notificaciones push
     Route::post('notifications/notify-route', [NotificationController::class, 'notifyRoute'])

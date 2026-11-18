@@ -99,7 +99,9 @@ class ReportsTest extends ApiTestCase
         $this->assertSoftDeleted('reports', ['id' => $id, 'status' => 'eliminado']);
 
         $this->asUser($user)->getJson('/api/reports')->assertJsonCount(0);
-        $this->asUser($user)->getJson('/api/reports/with-deleted')->assertJsonCount(1)
+        // el historial completo es solo para admin (#9)
+        $this->asUser($user)->getJson('/api/reports/with-deleted')->assertStatus(403);
+        $this->asUser($this->makeUser(3))->getJson('/api/reports/with-deleted')->assertJsonCount(1)
             ->assertJsonPath('0.dispatches', []);
     }
 
@@ -128,15 +130,20 @@ class ReportsTest extends ApiTestCase
 
     public function test_stations_and_dispatches(): void
     {
-        $user = $this->makeUser(2);
+        $user = $this->makeUser(2); // autoridad: despacha
+        $admin = $this->makeUser(3); // admin: gestiona estaciones
         $reportId = $this->createReport($this->makeUser(1))['id'];
 
-        $station = $this->asUser($user)->postJson('/api/emergency-stations', [
+        // una autoridad no puede crear estaciones (#9)
+        $this->asUser($user)->postJson('/api/emergency-stations', ['name' => 'x', 'installation_type' => 'policia', 'latitude' => 1, 'longitude' => 1])
+            ->assertStatus(403);
+
+        $station = $this->asUser($admin)->postJson('/api/emergency-stations', [
             'name' => 'UTOP Norte', 'installation_type' => 'policia', 'latitude' => -17.75, 'longitude' => -63.18,
         ])->assertCreated()->assertJsonPath('coordinates', [-63.18, -17.75])->json();
-        $this->asUser($user)->postJson('/api/emergency-stations', ['name' => 'x', 'installation_type' => 'otro', 'latitude' => 1, 'longitude' => 1])
+        $this->asUser($admin)->postJson('/api/emergency-stations', ['name' => 'x', 'installation_type' => 'otro', 'latitude' => 1, 'longitude' => 1])
             ->assertStatus(400);
-        $this->asUser($user)->patchJson("/api/emergency-stations/{$station['id']}", ['name' => 'UTOP Norte 2'])
+        $this->asUser($admin)->patchJson("/api/emergency-stations/{$station['id']}", ['name' => 'UTOP Norte 2'])
             ->assertOk()->assertJsonPath('name', 'UTOP Norte 2');
         $this->asUser($user)->getJson('/api/emergency-stations')->assertOk()->assertJsonCount(1);
 
@@ -148,11 +155,11 @@ class ReportsTest extends ApiTestCase
             ->assertOk()->assertJsonPath('state', 'completado');
         $this->asUser($user)->patchJson("/api/dispatches/{$dispatch['id']}/state", ['state' => 'otro'])->assertStatus(400);
 
-        $this->asUser($user)->getJson('/api/reports/with-deleted')
+        $this->asUser($admin)->getJson('/api/reports/with-deleted')
             ->assertJsonPath('0.dispatches.0.state', 'completado')
             ->assertJsonPath('0.dispatches.0.attended_by.id', $user->id);
 
-        $this->asUser($user)->deleteJson("/api/emergency-stations/{$station['id']}")->assertOk();
+        $this->asUser($admin)->deleteJson("/api/emergency-stations/{$station['id']}")->assertOk();
         $this->assertSoftDeleted(EmergencyStation::class, ['id' => $station['id']]);
     }
 
