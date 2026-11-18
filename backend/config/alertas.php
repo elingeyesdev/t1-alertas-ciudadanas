@@ -53,4 +53,18 @@ return [
         // Si un tracking no se actualiza en este tiempo se considera detenido
         'ttl_seconds' => (int) env('TRACKING_TTL_SECONDS', 120),
     ],
+
+    // Panel de administración Blade/Tabler (/panel)
+    'panel' => [
+        // Token PÚBLICO de Mapbox (pk...). Vacío = mapa de OpenStreetMap.
+        'mapbox_token' => env('MAPBOX_ACCESS_TOKEN', ''),
+        // Centro inicial de los mapas: Santa Cruz de la Sierra
+        'map_center' => [(float) env('MAP_CENTER_LAT', -17.7833), (float) env('MAP_CENTER_LNG', -63.1821)],
+        // Tiempo real: mismo Reverb que usan la web y la app móvil
+        'reverb' => [
+            'key' => env('REVERB_APP_KEY', 'alertas-key'),
+            'port' => (int) env('REVERB_PORT', 6001),
+            'scheme' => env('REVERB_SCHEME', 'http'),
+        ],
+    ],
 ];

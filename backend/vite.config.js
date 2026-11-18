@@ -8,7 +8,9 @@ export default defineConfig({
     ...(process.env.VITE_DOCKER === 'true' && { envDir: process.env.VITE_ENV_DIR || '/vite-env' }),
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/panel.css', 'resources/js/panel.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/panel.css', 'resources/js/panel.js',
+                'resources/js/panel-map.js', 'resources/js/panel-picker.js',
+            ],
             refresh: true,
             fonts: [
                 bunny('Instrument Sans', {

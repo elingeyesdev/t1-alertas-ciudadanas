@@ -343,3 +343,33 @@ docker compose @test exec -T db rm -f /tmp/alertas.dump
 Use los nombres configurados si difieren. Verifique el resultado en ese proyecto
 aislado antes de depender de las copias. Los volúmenes persistentes no son backups.
 Evite `down -v`, borrar volúmenes o reemplazar el volumen de producción al actualizar.
+
+## 10. Panel de administración (Blade + Tabler)
+
+El panel web del administrador vive dentro de Laravel en **http://localhost:8000/panel**
+(reemplaza a la web React de la carpeta `web/`). Solo entran usuarios con rol `admin`.
+
+| Módulo | Ruta | Qué hace |
+|---|---|---|
+| Inicio | `/panel` | Resumen: alertas activas, por verificar, unidades en camino, últimas alertas |
+| Mapa en vivo | `/panel/mapa` | Alertas activas, estaciones, unidades en camino y zonas de riesgo; se actualiza solo con Reverb |
+| Alertas | `/panel/alertas` | Filtros, detalle con fotos y comentarios, verificar, resolver, eliminar, reactivar, despachar unidad, crear alerta |
+| Usuarios | `/panel/usuarios` | Crear ciudadano, autoridad (envía credenciales) o admin; editar, enviar correo, reenviar credenciales, eliminar |
+| Estaciones | `/panel/estaciones` | Crear, editar (con mapa) y eliminar estaciones de policía, bomberos y hospitales |
+
+Para usarlo en desarrollo:
+
+```powershell
+cd backend
+npm install
+npm run build                      # compila Tabler, íconos y mapas (o "npm run dev" mientras programas)
+php artisan serve --host=0.0.0.0 --port=8000
+php artisan reverb:start --port=6001   # en otra terminal, para el mapa en tiempo real
+```
+
+En `backend/.env` puedes poner `MAPBOX_ACCESS_TOKEN=pk...` (token público) para usar el mapa de
+Mapbox; si lo dejas vacío se usa OpenStreetMap. No subas tu token a Git.
+
+Los controladores están en `app/Http/Controllers/Panel/` y reutilizan los mismos servicios que la API
+(`ReportService`, `UserService`, `DispatchService`, etc.), así que la app móvil y el panel siguen las
+mismas reglas. Pruebas: `php artisan test --filter=PanelModulesTest`.
