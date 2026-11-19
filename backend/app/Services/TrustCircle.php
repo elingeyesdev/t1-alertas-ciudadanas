@@ -152,7 +152,7 @@ class TrustCircle
      *
      * @return array{pushed: int, whatsapp: array<int, array{name: string, phone: string, url: string}>}
      */
-    public function alert(User $owner, float $latitude, float $longitude, ?int $reportId = null): array
+    public function alert(User $owner, float $latitude, float $longitude, ?int $reportId = null, bool $notifyApp = true): array
     {
         $name = trim($owner->first_name.' '.$owner->last_name) ?: 'Un contacto';
         $mapUrl = sprintf('https://maps.google.com/?q=%.6F,%.6F', $latitude, $longitude);
@@ -163,7 +163,7 @@ class TrustCircle
             ->filter()->values()->all();
 
         $pushed = 0;
-        if ($tokens) {
+        if ($tokens && $notifyApp) {
             try {
                 $pushed = $this->fcm->sendToTokens($tokens, "🚨 {$name} necesita ayuda", 'Activó el botón de pánico. Toca para ver su ubicación.', [
                     'type' => 'trust_circle_sos',

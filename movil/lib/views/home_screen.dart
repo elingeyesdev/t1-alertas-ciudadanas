@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/viewmodels/tracking_provider.dart';
 import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
+import 'package:alertas_ciudadanas/views/widgets/sos_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -246,6 +247,12 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                     ],
 
+                    // HU-24: botón de pánico, disponible desde la pantalla principal
+                    if (!isAuthority) ...[
+                      const SosButton(),
+                      const SizedBox(height: 24),
+                    ],
+
                     if (!isAuthority) ...[
                       // 3. Banner informativo inferior
                       Container(
@@ -364,4 +371,4 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
+}

@@ -51,6 +51,8 @@ class ReportController extends PanelController
             ->when(($filters['verificacion'] ?? null) === 'no', fn ($q) => $q->where('verified', false))
             ->when($filters['desde'] ?? null, fn ($q, $d) => $q->where('created_at', '>=', Carbon::parse($d)->startOfDay()))
             ->when($filters['hasta'] ?? null, fn ($q, $d) => $q->where('created_at', '<=', Carbon::parse($d)->endOfDay()))
+            // HU-24: los SOS activos van primero
+            ->orderByRaw("(is_sos AND status = 'activo') DESC")
             ->latest()
             ->paginate(15)
             ->withQueryString();
