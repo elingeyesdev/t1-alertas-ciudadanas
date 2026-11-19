@@ -11,6 +11,7 @@ use App\Models\Report;
 use App\Services\CaseTracking;
 use App\Services\CommentService;
 use App\Services\ReportService;
+use App\Services\ReportVoting;
 use App\Support\Dt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -125,7 +126,14 @@ class ReportController extends Controller
         return $this->reports->findByUserId($userId);
     }
 
-    public function show(int $id)
+    public function vote(Request $request, int $id, ReportVoting $voting)
+    {
+        $data = $request->validate(['vote' => ['required', 'string', 'in:seen,false']]);
+
+        return response()->json($voting->cast($id, $request->user(), $data['vote']));
+    }
+
+    public function show(Request $request, int $id, ReportVoting $voting)
     {
         $detail = $this->reports->findOne($id);
         $report = $detail->resource;
@@ -156,6 +164,7 @@ class ReportController extends Controller
         return response()->json($detail->resolve(request()) + [
             'evidence' => $photos->concat($videos)->sortBy(['uploaded_at', 'type', 'id'])->values(),
             'assignments' => $assignments,
+            'voting' => $voting->summary($report, $request->user()),
         ]);
     }
 

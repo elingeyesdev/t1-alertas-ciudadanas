@@ -12,6 +12,7 @@ import 'package:alertas_ciudadanas/core/network/dio_client.dart';
 import 'package:alertas_ciudadanas/services/fcm_service.dart';
 import 'package:alertas_ciudadanas/services/ambulance_sharing.dart';
 import 'package:alertas_ciudadanas/views/case_tracking_screen.dart';
+import 'package:alertas_ciudadanas/views/alert_detail_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   static final GlobalKey<MainNavigationScreenState> navigationKey = GlobalKey<MainNavigationScreenState>();
@@ -52,7 +53,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           _ambulanceSharingUser = user.id;
           AmbulanceSharing.instance.attach(user.id);
         }
-        _fcm.init(user.id, onAssignmentOpened: _openAssignment, onCaseOpened: _openCase).then((_) {
+        _fcm.init(user.id, onAssignmentOpened: _openAssignment, onCaseOpened: _openCase, onReportOpened: _openReport).then((_) {
           if (!mounted) return;
           _fcm.listenToForegroundMessages(() => alerts.fetchAlerts(
             includeDeleted: isStaffRole(user.roleId, user.roleName),
@@ -104,6 +105,13 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CaseTrackingScreen(reportId: reportId)),
+    );
+  }
+
+  void _openReport(int reportId) {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => AlertDetailScreen(reportId: reportId)),
     );
   }
 

@@ -18,6 +18,7 @@ class NotificationService
     {
         try {
             $query = User::query()
+                ->whereHas('role', fn ($role) => $role->where('name', 'usuario'))
                 ->whereNotNull('fcm_token')
                 ->whereNotNull('last_latitude')
                 ->where('id', '!=', $report->creator_id);
@@ -43,7 +44,7 @@ class NotificationService
                 $tokens,
                 'Nueva alerta: '.($report->type->name ?? 'Incidente'),
                 $report->description ?: 'Se ha reportado un incidente cerca de ti.',
-                ['reportId' => (string) $report->id],
+                ['type' => 'nearby_report', 'reportId' => (string) $report->id],
             );
         } catch (Throwable $e) {
             Log::error('Error notificando usuarios cercanos', ['error' => $e->getMessage()]);

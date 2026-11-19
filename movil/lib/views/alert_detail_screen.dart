@@ -8,6 +8,8 @@ import 'package:video_player/video_player.dart';
 import '../core/constants/api_constants.dart';
 import '../core/network/dio_client.dart';
 import '../models/alert_model.dart';
+import '../services/location_service.dart';
+import '../services/user_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'comments_screen.dart';
 
@@ -59,6 +61,162 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
   Map<String, dynamic>? _detail;
   bool _loadFailed = false;
   bool _guideChecked = false;
+  bool _updatingVote = false;
+
+  Future<void> _updateVote({String? vote}) async {
+    if (_updatingVote) return;
+    final userId = context.read<AuthViewModel>().user?.id;
+    setState(() => _updatingVote = true);
+    try {
+      if (vote == null && userId != null) {
+        final location = await LocationService().getCurrentLocation();
+        await UserService().updateLocation(
+          userId,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        );
+      } else if (vote != null) {
+        final response = await dioClient.dio.post(
+          '/reports/${widget.reportId}/votes',
+          data: {'vote': vote},
+        );
+        if (mounted) setState(() => _detail?['voting'] = response.data);
+      }
+      if (mounted) await _load();
+    } catch (error) {
+      if (!mounted) return;
+      if (error is DioException &&
+          [403, 409].contains(error.response?.statusCode)) {
+        await _load();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            vote == null
+                ? 'No se pudo actualizar tu ubicación. Revisa los permisos e inténtalo de nuevo.'
+                : 'No se pudo registrar el voto. Revisa el estado del reporte e inténtalo de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _updatingVote = false);
+    }
+  }
+
+  Future<void> _showVoting() async {
+    setState(() => _covered = true);
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => StatefulBuilder(
+          builder: (sheetContext, refreshSheet) {
+            final voting = _detail?['voting'];
+            if (voting is! Map) return const SizedBox.shrink();
+            return AlertDialog(
+              title: const Text('Validar reporte'),
+              scrollable: true,
+              contentPadding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              content: SizedBox(
+                width: 320,
+                child: _votingControls(voting, ({String? vote}) async {
+                  final update = _updateVote(vote: vote);
+                  refreshSheet(() {});
+                  await update;
+                  if (sheetContext.mounted) refreshSheet(() {});
+                }),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _covered = false);
+    }
+  }
+
+  Widget _evidenceAction({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(86, 60),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 28),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _votingControls(
+    Map voting,
+    Future<void> Function({String? vote}) updateVote,
+  ) {
+    final own = voting['own_vote'];
+    final reason = voting['reason'];
+    final canVote = voting['can_vote'] == true;
+    return Material(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              own == null
+                  ? 'Votación del reporte'
+                  : canVote
+                  ? 'Tu voto · Toca la otra opción para cambiarlo'
+                  : 'Tu voto',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final (value, label) in [('seen', 'Lo vi'), ('false', 'Es falso')])
+                  ChoiceChip(
+                    label: Text('$label · ${voting[value]}'),
+                    selected: own == value,
+                    onSelected: canVote && !_updatingVote && own != value
+                        ? (_) => updateVote(vote: value)
+                        : null,
+                    disabledColor: own == value
+                        ? Theme.of(context).colorScheme.secondaryContainer
+                        : null,
+                  ),
+              ],
+            ),
+            if (_updatingVote) const LinearProgressIndicator(),
+              if (reason == 'missing_location' || reason == 'outside_radius')
+                TextButton(
+                  onPressed: _updatingVote ? null : () => updateVote(),
+                  child: Text(
+                    reason == 'missing_location'
+                        ? 'Actualiza tu ubicación para votar'
+                        : 'Solo vecinos cercanos · Actualizar ubicación',
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
   int _page = 0;
   XFile? _pending;
   bool _video = true;
@@ -268,6 +426,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
+    final voting = detail?['voting'];
     final report = detail == null ? null : AlertModel.fromJson(detail);
     final items = detail?['evidence'] as List<dynamic>? ?? [];
     final evidence = [
@@ -370,7 +529,9 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                                     uri: uri,
                                     active: index == _page && !_covered,
                                   )
-                                : Image.network(
+                                : FractionallySizedBox(
+                                  heightFactor: 0.92,
+                                  child: Image.network(
                                     uri.toString(),
                                     fit: BoxFit.contain,
                                     errorBuilder: (_, _, _) => const Center(
@@ -379,17 +540,33 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                                         style: TextStyle(color: Colors.white),
                                       ),
                                     ),
-                                  );
+                                  ),
+                                );
                           },
                         ),
                   if (report != null)
                     Positioned(
                       right: 12,
                       bottom: 16,
-                      child: IconButton.filled(
-                        tooltip: 'Comentarios',
-                        onPressed: _showComments,
-                        icon: const Icon(Icons.comment_outlined),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (voting is Map) ...[
+                            _evidenceAction(
+                              label: 'Votación',
+                              onPressed: _showVoting,
+                              icon: voting['own_vote'] == null
+                                    ? Icons.how_to_vote_outlined
+                                    : Icons.how_to_vote,
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          _evidenceAction(
+                            label: 'Comentarios',
+                            onPressed: _showComments,
+                            icon: Icons.comment_outlined,
+                          ),
+                        ],
                       ),
                     ),
                 ],

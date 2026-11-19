@@ -15,6 +15,9 @@
 @endpush
 
 @section('actions')
+    <span class="align-self-center text-secondary">
+        Lo vi: {{ $voting['seen'] }} · Es falso: {{ $voting['false'] }} · Peso: {{ $voting['weight'] }}
+    </span>
     @if ($isActive && ! $report->verified)
         <form method="POST" action="{{ route('panel.alertas.verify', $report->id) }}"
               data-confirm="Se marcará como verificada y se avisará a quien la reportó." data-confirm-title="¿Verificar alerta?" data-confirm-color="success">
@@ -63,7 +66,7 @@
                         <dd class="col-7 col-md-8">{{ $report->created_at?->timezone($tz)->format('d/m/Y H:i') }} <span class="text-secondary">({{ $report->created_at?->diffForHumans() }})</span></dd>
                         <dt class="col-5 col-md-4">Vence</dt>
                         <dd class="col-7 col-md-8">{{ $report->expires_at?->timezone($tz)->format('d/m/Y H:i') ?? '—' }}</dd>
-                        <dt class="col-5 col-md-4">Peso (evidencia)</dt>
+                        <dt class="col-5 col-md-4">Peso</dt>
                         <dd class="col-7 col-md-8">{{ $report->weight }}</dd>
                         <dt class="col-5 col-md-4">Coordenadas</dt>
                         <dd class="col-7 col-md-8 text-secondary">{{ number_format($report->latitude, 5) }}, {{ number_format($report->longitude, 5) }}</dd>
@@ -116,6 +119,7 @@
         </div>
 
         <div class="col-lg-5">
+            @include('panel.partials.report-weight-guide', ['currentWeight' => $report->weight])
             <div class="card mb-3">
                 <div class="card-header"><h2 class="card-title">Ubicación</h2></div>
                 <div class="card-body p-0">
