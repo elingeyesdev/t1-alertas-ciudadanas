@@ -21,6 +21,7 @@ class ReportService
     public function __construct(
         private readonly ImageService $images,
         private readonly NotificationService $notifications,
+        private readonly CaseTracking $cases,
     ) {}
 
     public function create(array $data, ?UploadedFile $file): ReportResource
@@ -61,6 +62,7 @@ class ReportService
 
         $report->load(self::WITH);
 
+        $this->cases->record($report, CaseTracking::CREATED, notify: false);
         $this->notifications->notifyNearbyUsers($report);
 
         $resource = new ReportResource($report);
@@ -93,8 +95,12 @@ class ReportService
             abort(404, 'Reporte no encontrado');
         }
 
+        $wasVerified = (bool) $report->verified;
         $report->update(['verified' => true]);
-        $this->notifications->notifyReportVerified($report);
+        if (! $wasVerified) {
+            // HU-26: queda en la línea de tiempo y se avisa por push al creador
+            $this->cases->record($report, CaseTracking::VERIFIED);
+        }
 
         return new ReportResource($report->load(self::WITH));
     }
@@ -216,6 +222,9 @@ class ReportService
 
         $report->status = $status;
         $report->save();
+        if ($status === StateReport::Resuelto) {
+            $this->cases->record($report, CaseTracking::RESOLVED);
+        }
         $report->delete();
 
         return ['message' => $message];

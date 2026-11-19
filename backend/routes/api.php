@@ -11,7 +11,9 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTypeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SosController;
 use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\TrustCircleController;
 use App\Http\Controllers\AmbulanceTrackingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -82,11 +84,26 @@ Route::middleware('auth:api')->group(function () {
         Route::post('{id}/comments', 'storeComment')->whereNumber('id');
         Route::get('{id}/comments', 'comments')->whereNumber('id');
         Route::post('{id}/videos', 'uploadVideo')->whereNumber('id');
+        Route::get('{id}/case', 'caseTracking')->whereNumber('id'); // HU-26 seguimiento del caso
         Route::post('{id}/images', 'uploadImage')->whereNumber('id');
         Route::post('{id}/images/{ignoredUserId}', 'uploadImage')->whereNumber('id'); // compatibilidad con la app actual
         Route::patch('{id}/verify', 'verify')->whereNumber('id')->middleware('role:admin,autoridad');
         Route::patch('{id}/resolve', 'resolve')->whereNumber('id');
         Route::patch('{id}/reactivate', 'reactivate')->whereNumber('id');
+    });
+
+    // HU-24 Botón de pánico (solo ciudadanos)
+    Route::post('sos', [SosController::class, 'store'])->middleware(['role:usuario', 'throttle:5,1']);
+
+    // HU-25 Círculo de confianza (cada uno maneja solo el suyo)
+    Route::prefix('trust-circle')->controller(TrustCircleController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::post('contacts', 'store')->middleware('throttle:20,1');
+        Route::patch('contacts/{id}', 'update')->whereNumber('id');
+        Route::delete('contacts/{id}', 'destroy')->whereNumber('id');
+        Route::post('invites', 'invite')->middleware('throttle:10,1');
+        Route::post('join', 'join')->middleware('throttle:10,1');
+        Route::delete('memberships/{id}', 'leave')->whereNumber('id');
     });
 
     // Comentarios (respuestas)

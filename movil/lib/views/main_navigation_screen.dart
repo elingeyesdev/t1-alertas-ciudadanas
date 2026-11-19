@@ -11,6 +11,7 @@ import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
 import 'package:alertas_ciudadanas/core/network/dio_client.dart';
 import 'package:alertas_ciudadanas/services/fcm_service.dart';
 import 'package:alertas_ciudadanas/services/ambulance_sharing.dart';
+import 'package:alertas_ciudadanas/views/case_tracking_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   static final GlobalKey<MainNavigationScreenState> navigationKey = GlobalKey<MainNavigationScreenState>();
@@ -51,7 +52,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           _ambulanceSharingUser = user.id;
           AmbulanceSharing.instance.attach(user.id);
         }
-        _fcm.init(user.id, onAssignmentOpened: _openAssignment).then((_) {
+        _fcm.init(user.id, onAssignmentOpened: _openAssignment, onCaseOpened: _openCase).then((_) {
           if (!mounted) return;
           _fcm.listenToForegroundMessages(() => alerts.fetchAlerts(
             includeDeleted: isStaffRole(user.roleId, user.roleName),
@@ -96,6 +97,14 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
         const SnackBar(content: Text('El despacho ya no está disponible.')),
       );
     }
+  }
+
+  /// HU-26: al tocar un push de seguimiento se abre la línea de tiempo del caso.
+  void _openCase(int reportId) {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CaseTrackingScreen(reportId: reportId)),
+    );
   }
 
   void selectTab(int index) {

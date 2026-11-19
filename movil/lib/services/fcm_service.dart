@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:alertas_ciudadanas/services/user_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FcmService {
   static const _ambulanceChannel = 'ambulance_alerts_sound_v3';
@@ -17,6 +18,7 @@ class FcmService {
   StreamSubscription<RemoteMessage>? _openedMessages;
   bool _disposed = false;
   void Function(int)? _onAssignmentOpened;
+  void Function(int)? _onCaseOpened;
   /// true si Firebase se inicializó (existe google-services.json)
   bool get _firebaseReady => Firebase.apps.isNotEmpty;
 
@@ -25,8 +27,9 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId, {void Function(int)? onAssignmentOpened}) async {
+  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened}) async {
     _onAssignmentOpened = onAssignmentOpened;
+    _onCaseOpened = onCaseOpened;
     if (!_firebaseReady) {
       debugPrint('FCM omitido: Firebase no está configurado');
       return;
@@ -108,12 +111,17 @@ class FcmService {
     if (!_firebaseReady || _disposed) return;
     _foregroundMessages = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       debugPrint('Mensaje recibido en primer plano: ${message.notification?.title}');
+      if (_trustSosPayload(message) != null) {
+        _showTrustSos(message);
+        return;
+      }
       
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
-      final isVerified = message.data['type'] == 'report_verified';
+      final isVerified = message.data['type'] == 'report_verified' || message.data['type'] == 'case_update';
       final alertId = _ambulanceId(message);
       final assignmentId = _assignmentId(message);
+      final caseId = _caseId(message);
       if (alertId != null) unawaited(_recordReceipt(alertId, 'foreground'));
       final playedSiren = alertId != null &&
           !kIsWeb && defaultTargetPlatform == TargetPlatform.android &&
@@ -130,7 +138,7 @@ class FcmService {
               alertId != null ? _ambulanceChannel : (isVerified ? 'verified_channel' : 'alert_channel'),
               alertId != null ? 'Avisos de ambulancias' : (isVerified ? 'Verificaciones' : 'Alertas'),
               channelDescription: alertId != null ? 'Avisos cuando una ambulancia se aproxima a tu ubicación.' : isVerified
-                  ? 'Cuando una autoridad verifica tu reporte'
+                  ? 'Cuando cambia el estado de tu reporte'
                   : 'Canal para alertas de incidentes cercanos',
               importance: Importance.max,
               priority: Priority.high,
@@ -141,7 +149,9 @@ class FcmService {
               icon: '@mipmap/ic_launcher',
             ),
           ),
-          payload: assignmentId == null ? alertId : 'dispatch:$assignmentId',
+          payload: assignmentId != null
+              ? 'dispatch:$assignmentId'
+              : (caseId != null ? 'case:$caseId' : alertId),
         );
       }
       
@@ -165,6 +175,11 @@ class FcmService {
           : null;
 
   void _recordOpened(RemoteMessage message) {
+    final caseId = _caseId(message);
+    if (caseId != null) {
+      _onCaseOpened?.call(caseId);
+      return;
+    }
     final assignmentId = _assignmentId(message);
     if (assignmentId != null) {
       _onAssignmentOpened?.call(assignmentId);
@@ -172,19 +187,73 @@ class FcmService {
     }
     final alertId = _ambulanceId(message);
     if (alertId != null) unawaited(_recordReceipt(alertId, 'opened'));
+    final sos = _trustSosPayload(message);
+    if (sos != null) unawaited(_openSosLocation(sos));
   }
 
   int? _assignmentId(RemoteMessage message) => message.data['type'] == 'ambulance_assignment'
       ? int.tryParse('${message.data['dispatch_id']}')
       : null;
 
+  /// HU-26: push de seguimiento del caso (verificado, unidad asignada, en camino...).
+  int? _caseId(RemoteMessage message) => message.data['type'] == 'case_update'
+      ? int.tryParse('${message.data['reportId']}')
+      : null;
+
   void _openPayload(String? payload) {
     if (_disposed || payload == null) return;
+    if (payload.startsWith('case:')) {
+      final id = int.tryParse(payload.substring('case:'.length));
+      if (id != null) _onCaseOpened?.call(id);
+      return;
+    }
     if (payload.startsWith('dispatch:')) {
       final id = int.tryParse(payload.substring('dispatch:'.length));
       if (id != null) _onAssignmentOpened?.call(id);
+    } else if (payload.startsWith('sos:')) {
+      unawaited(_openSosLocation(payload));
     } else {
       unawaited(_recordReceipt(payload, 'opened'));
+    }
+  }
+
+  /// HU-25: aviso del círculo de confianza (alguien activó el SOS). Devuelve "sos:lat,lng".
+  String? _trustSosPayload(RemoteMessage message) {
+    if (message.data['type'] != 'trust_circle_sos') return null;
+    final lat = double.tryParse('${message.data['latitude']}');
+    final lng = double.tryParse('${message.data['longitude']}');
+    return lat == null || lng == null ? null : 'sos:$lat,$lng';
+  }
+
+  void _showTrustSos(RemoteMessage message) {
+    final payload = _trustSosPayload(message);
+    if (payload == null || _disposed) return;
+    _localNotificationsPlugin.show(
+      id: payload.hashCode,
+      title: message.notification?.title ?? 'Tu contacto necesita ayuda',
+      body: message.notification?.body ?? 'Toca para ver su ubicación.',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'trust_circle_channel',
+          'Círculo de confianza',
+          channelDescription: 'Cuando alguien de tu círculo activa el botón de pánico',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+      payload: payload,
+    );
+  }
+
+  /// Abre la ubicación del SOS en Google Maps.
+  Future<void> _openSosLocation(String payload) async {
+    final coords = payload.substring('sos:'.length);
+    try {
+      await launchUrl(Uri.parse('https://maps.google.com/?q=$coords'), mode: LaunchMode.externalApplication);
+    } catch (error) {
+      debugPrint('No se pudo abrir la ubicación del SOS: ${error.runtimeType}');
     }
   }
 

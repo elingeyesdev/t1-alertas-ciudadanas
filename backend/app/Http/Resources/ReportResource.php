@@ -21,6 +21,8 @@ class ReportResource extends JsonResource
             'coordinates' => [$this->longitude, $this->latitude],
             'weight' => $this->weight ?? 0,
             'verified' => (bool) $this->verified,
+            // HU-24: alerta prioritaria creada con el botón de pánico
+            'is_sos' => (bool) $this->is_sos,
             'created_at' => Dt::iso($this->created_at),
             'updated_at' => Dt::iso($this->updated_at ?? $this->created_at),
             'expires_at' => Dt::iso($this->expires_at),

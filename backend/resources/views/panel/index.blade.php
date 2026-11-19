@@ -9,6 +9,34 @@
 @endsection
 
 @section('content')
+    @if ($sos->isNotEmpty())
+        <div class="card card-sos mb-3">
+            <div class="card-status-start bg-red"></div>
+            <div class="card-header">
+                <h2 class="card-title text-red"><i class="ti ti-sos me-2"></i>Botón de pánico activo ({{ $sos->count() }})</h2>
+            </div>
+            <div class="list-group list-group-flush">
+                @foreach ($sos as $report)
+                    @php $dispatch = $report->dispatches->first(); @endphp
+                    <a href="{{ route('panel.alertas.show', $report->id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between gap-2">
+                            <strong>#{{ $report->id }} · {{ trim(($report->creator?->first_name ?? '').' '.($report->creator?->last_name ?? '')) ?: 'Ciudadano' }}</strong>
+                            <span class="text-secondary small text-nowrap">{{ $report->created_at?->diffForHumans() }}</span>
+                        </div>
+                        <div class="small text-secondary">{{ $report->zone }} · {{ $report->description }}</div>
+                        <div class="small mt-1">
+                            @if ($dispatch && $dispatch->state?->value === 'en_curso')
+                                <span class="badge bg-yellow-lt"><i class="ti ti-ambulance me-1"></i>{{ $dispatch->departed_at ? 'En camino' : 'Asignada' }}: {{ $dispatch->attendedBy?->first_name }} · {{ $dispatch->destination?->name }}</span>
+                            @else
+                                <span class="badge bg-red-lt"><i class="ti ti-alert-circle me-1"></i>Sin unidad asignada: despacha una a mano</span>
+                            @endif
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="row row-cards mb-3">
         <div class="col-sm-6 col-lg-3">@include('panel.partials.stat', ['label' => 'Alertas activas', 'value' => $stats['activas'], 'icon' => 'ti-alert-triangle', 'color' => 'red', 'href' => route('panel.alertas.index', ['estado' => 'activo'])])</div>
         <div class="col-sm-6 col-lg-3">@include('panel.partials.stat', ['label' => 'Por verificar', 'value' => $stats['sinVerificar'], 'icon' => 'ti-eye-check', 'color' => 'orange', 'href' => route('panel.alertas.index', ['estado' => 'activo', 'verificacion' => 'no'])])</div>

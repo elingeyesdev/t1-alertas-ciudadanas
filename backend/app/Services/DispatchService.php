@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class DispatchService
 {
+    public function __construct(private readonly CaseTracking $cases) {}
+
     public function create(int $reportId, int $destinationId, string $userId): DispatchResource
     {
         if (! Report::whereKey($reportId)->exists()) {
@@ -32,6 +34,9 @@ class DispatchService
             'recorded_at' => now(),
         ]);
 
+        // HU-26: «unidad asignada» en la línea de tiempo del caso + push al creador
+        $this->cases->record($dispatch->report, CaseTracking::DISPATCHED, $dispatch);
+
         return new DispatchResource($dispatch->load(['report.type', 'report.images.uploadedBy', 'destination', 'attendedBy']));
     }
 
@@ -40,6 +45,7 @@ class DispatchService
         $dispatch = DB::transaction(function () use ($id, $state, $actor) {
             $dispatch = Dispatch::query()->lockForUpdate()->findOrFail($id);
             abort_unless($dispatch->attended_by === $actor->id || $actor->hasRole('admin'), 403);
+            $previous = $dispatch->state;
             $dispatch->update(['state' => StateType::from($state)]);
 
             if ($dispatch->state !== StateType::EnCurso) {
@@ -47,8 +53,14 @@ class DispatchService
                     ->update(['status' => 'completed', 'updated_at' => now()]);
             }
 
-            return $dispatch;
+            return [$dispatch, $previous];
         });
+        [$dispatch, $previous] = $dispatch;
+
+        if ($previous === StateType::EnCurso && $dispatch->state !== StateType::EnCurso && $dispatch->report) {
+            $type = $dispatch->state === StateType::Completado ? CaseTracking::COMPLETED : CaseTracking::CANCELLED;
+            $this->cases->record($dispatch->report, $type, $dispatch, $actor);
+        }
 
         return new DispatchResource($dispatch);
     }

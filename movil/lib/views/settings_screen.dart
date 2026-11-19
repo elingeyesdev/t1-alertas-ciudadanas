@@ -9,6 +9,7 @@ import 'package:alertas_ciudadanas/views/my_account_screen.dart';
 import 'package:alertas_ciudadanas/viewmodels/tracking_provider.dart';
 import 'package:alertas_ciudadanas/services/ambulance_sharing.dart';
 import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
+import 'package:alertas_ciudadanas/views/trust_circle_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -97,6 +98,21 @@ class SettingsScreen extends StatelessWidget {
                       onTap: () => _showThemeDialog(context, themeVM),
                     ),
                     const SizedBox(height: 8),
+                    // HU-25: contactos que reciben tu ubicación si activas el SOS
+                    if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName)) ...[
+                      _buildSettingRow(
+                        context,
+                        icon: Icons.group_rounded,
+                        title: 'Círculo de confianza',
+                        subtitle: 'Quién recibe tu ubicación si activas el SOS',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const TrustCircleScreen()),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
                       const _AmbulanceSharingTile(),
 

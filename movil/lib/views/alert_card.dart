@@ -3,6 +3,8 @@ import 'package:alertas_ciudadanas/models/alert_model.dart';
 import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/views/comments_screen.dart';
+import 'package:alertas_ciudadanas/views/case_tracking_screen.dart';
+import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
 
 class AlertCard extends StatefulWidget {
   final AlertModel alert;
@@ -167,7 +169,13 @@ class _AlertCardState extends State<AlertCard> {
   @override
   Widget build(BuildContext context) {
     final color = _alertColor(widget.alert.type);
-    final isAuthority = context.read<AuthViewModel>().user?.roleId == 2;
+    final currentUser = context.read<AuthViewModel>().user;
+    final isAuthority = currentUser?.roleId == 2;
+    // HU-26: quien creó el reporte puede ver su seguimiento
+    final isOwnReport = currentUser != null &&
+        widget.alert.id > 0 &&
+        widget.alert.userId == currentUser.id &&
+        !isStaffRole(currentUser.roleId, currentUser.roleName);
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     // Contribuciones: tamaño de la lista de imágenes menos 1 (la del creador)
@@ -413,6 +421,29 @@ class _AlertCardState extends State<AlertCard> {
             ),
 
 
+
+          // HU-26: seguimiento del caso para el ciudadano que lo reportó
+          if (isOwnReport)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFAF6D58),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  ),
+                  onPressed: () => Navigator.of(context, rootNavigator: true).push(
+                    MaterialPageRoute(builder: (_) => CaseTrackingScreen(reportId: widget.alert.id)),
+                  ),
+                  icon: const Icon(Icons.timeline_rounded, size: 18),
+                  label: const Text('VER SEGUIMIENTO', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ),
+            ),
 
           // 7. Botón de verificar incidente para autoridades
           if (isAuthority && !widget.alert.verified && widget.onVerify != null)

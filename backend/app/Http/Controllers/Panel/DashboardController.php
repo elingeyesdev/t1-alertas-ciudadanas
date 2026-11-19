@@ -29,6 +29,11 @@ class DashboardController extends PanelController
 
         $latest = Report::withTrashed()->with('type')->latest()->limit(8)->get();
 
+        // HU-24: los SOS activos salen destacados arriba del todo
+        $sos = Report::where('is_sos', true)->where('status', StateReport::Activo)
+            ->with(['creator', 'dispatches' => fn ($q) => $q->latest('id'), 'dispatches.attendedBy', 'dispatches.destination'])
+            ->latest()->get();
+
         $byType = Report::withTrashed()
             ->where('created_at', '>=', now()->subDays(30))
             ->selectRaw('report_type_id, count(*) as total')
@@ -41,6 +46,7 @@ class DashboardController extends PanelController
             'user' => Auth::guard('web')->user(),
             'stats' => $stats,
             'latest' => $latest,
+            'sos' => $sos,
             'byType' => $byType,
         ]);
     }

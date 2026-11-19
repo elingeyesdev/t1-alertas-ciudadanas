@@ -13,7 +13,8 @@ class ReportTypeService
 
     public function findAll()
     {
-        return ReportType::orderBy('id')->get();
+        // HU-24: el tipo SOS solo se usa desde el botón de pánico, no se elige al crear una alerta
+        return ReportType::where('name', '<>', SosService::TYPE_NAME)->orderBy('id')->get();
     }
 
     public function remove(int $id): array
