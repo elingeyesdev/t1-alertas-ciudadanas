@@ -93,15 +93,18 @@ class RiskZoneTaskHandler extends TaskHandler {
   Future<void> _notifyCorridorEntry(RouteCorridor corridor) async {
     await _ensureNotifications();
     HapticFeedback.heavyImpact();
+    final ambulance = corridor.activeAmbulance;
     await _notifications.show(
       id: corridor.id.hashCode,
-      title: 'Unidad de emergencia en camino',
+      title: ambulance ? 'Ambulancia en camino' : 'Unidad de emergencia en camino',
       body: 'Hay una unidad respondiendo a «${corridor.label}» cerca de tu ubicación.',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'route_corridor_channel',
-          'Rutas de emergencia',
+          ambulance ? 'ambulance_alerts_sound_v3' : 'route_corridor_channel',
+          ambulance ? 'Avisos de ambulancias' : 'Rutas de emergencia',
           channelDescription: 'Avisos cuando una unidad pasa cerca de ti',
+          sound: ambulance ? const RawResourceAndroidNotificationSound('ambulance_proximity_siren') : null,
+          audioAttributesUsage: ambulance ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
@@ -145,8 +148,9 @@ class RiskZoneTaskHandler extends TaskHandler {
 
       for (final corridor in corridors) {
         if (isInsideRouteCorridor(point, corridor.points)) {
-          insideCorridorIds.add(corridor.id);
-          if (!_activeCorridorIds.contains(corridor.id)) {
+          final entryId = corridor.notificationKey;
+          insideCorridorIds.add(entryId);
+          if (!_activeCorridorIds.contains(entryId)) {
             await _notifyCorridorEntry(corridor);
           }
         }
@@ -161,7 +165,7 @@ class RiskZoneTaskHandler extends TaskHandler {
 
       if (insideCorridorIds.isNotEmpty) {
         final corridor = corridors.firstWhere(
-          (c) => insideCorridorIds.contains(c.id),
+          (c) => insideCorridorIds.contains(c.notificationKey),
         );
         await FlutterForegroundTask.updateService(
           notificationText: 'Unidad en ruta · ${corridor.label}',

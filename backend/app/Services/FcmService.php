@@ -14,6 +14,56 @@ use Throwable;
  */
 class FcmService
 {
+    public function sendAmbulanceAlert(string $token, string $alertId, int $expiresAt): string
+    {
+        try {
+            $credentials = $this->credentials();
+            $accessToken = $this->accessToken($credentials);
+        } catch (Throwable) {
+            return 'retry';
+        }
+
+        $ttl = $expiresAt - time();
+        if ($ttl <= 0) {
+            return 'expired';
+        }
+
+        try {
+            $response = Http::withToken($accessToken)->connectTimeout(2)->timeout(5)
+                ->post("https://fcm.googleapis.com/v1/projects/{$credentials['project_id']}/messages:send", [
+                    'message' => [
+                        'token' => $token,
+                        'notification' => [
+                            'title' => 'Ambulancia próxima',
+                            'body' => 'Una ambulancia se aproxima a tu zona. Facilita el paso de forma segura.',
+                        ],
+                        'data' => ['type' => 'ambulance_approaching', 'alert_id' => $alertId],
+                        'android' => [
+                            'priority' => 'high',
+                            'ttl' => "{$ttl}s",
+                            'notification' => [
+                                'channel_id' => 'ambulance_alerts_sound_v3',
+                                'sound' => 'ambulance_proximity_siren',
+                                'tag' => $alertId,
+                            ],
+                        ],
+                        'apns' => [
+                            'headers' => ['apns-expiration' => (string) $expiresAt, 'apns-collapse-id' => $alertId],
+                            'payload' => ['aps' => ['sound' => 'default']],
+                        ],
+                    ],
+                ]);
+        } catch (Throwable) {
+            return 'uncertain';
+        }
+
+        return match (true) {
+            $response->successful() => 'sent',
+            $response->serverError() => 'uncertain',
+            default => 'rejected',
+        };
+    }
+
     public function enabled(): bool
     {
         return is_file((string) config('alertas.firebase.credentials'));
@@ -86,7 +136,7 @@ class FcmService
                 'exp' => $now + 3600,
             ], $credentials['private_key'], 'RS256');
 
-            return Http::asForm()->post('https://oauth2.googleapis.com/token', [
+            return Http::asForm()->connectTimeout(2)->timeout(5)->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'assertion' => $assertion,
             ])->throw()->json('access_token');

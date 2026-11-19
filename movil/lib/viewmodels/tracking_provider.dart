@@ -53,6 +53,8 @@ class TrackingProvider extends ChangeNotifier {
   int? _nearestStationId;
   LatLng? _nearestStationCoords;
   int? _dispatchId;
+  PositionWithBearing? _ambulanceFix;
+  DateTime? _lastAmbulancePosition;
   String? _profileType;
 
   // Subscriptions & Timers
@@ -190,7 +192,24 @@ class TrackingProvider extends ChangeNotifier {
       'profileType': _profileType,
     });
 
-    if (routeCoordinates.length >= 2 &&
+    final dispatchId = _dispatchId;
+    final fix = _ambulanceFix;
+    final capturedAt = fix?.capturedAt;
+    if (_profileType == 'paramedico') {
+      if (dispatchId != null && fix != null && capturedAt != null &&
+          fix.accuracy >= 0 && fix.accuracy <= 50 &&
+          status == 'active' && capturedAt != _lastAmbulancePosition &&
+          DateTime.now().difference(capturedAt).inSeconds < 30) {
+        _lastAmbulancePosition = capturedAt;
+        unawaited(_trackingService.sendAmbulancePosition(
+          dispatchId,
+          latitude: fix.latLng.latitude,
+          longitude: fix.latLng.longitude,
+          accuracy: fix.accuracy,
+          capturedAt: capturedAt,
+        ));
+      }
+    } else if (routeCoordinates.length >= 2 &&
         (status == 'active' || status == 'planned')) {
       unawaited(
         _routeNotifyService.notifyUsersAlongRoute(
@@ -295,6 +314,7 @@ class TrackingProvider extends ChangeNotifier {
     int? nearestStationId,
     LatLng? nearestStationCoords,
     String? profileType,
+    int? assignedDispatchId,
   }) async {
     if (_isFollowingRoute) return;
     if (_isSharingLocationOnly) {
@@ -320,7 +340,8 @@ class TrackingProvider extends ChangeNotifier {
     notifyListeners();
 
     // Persistir el despacho en base de datos PostgreSQL antes de iniciar tracking de ubicacion por socket
-    if (_reportId != null && _nearestStationId != null) {
+    _dispatchId = assignedDispatchId;
+    if (_dispatchId == null && _reportId != null && _nearestStationId != null) {
       try {
         final response = await dioClient.dio.post('/dispatches', data: {
           'reportId': _reportId,
@@ -337,9 +358,12 @@ class TrackingProvider extends ChangeNotifier {
     }
 
     // Attempt to load initial location and route before starting stream
+    _ambulanceFix = null;
+    _lastAmbulancePosition = null;
     try {
-      final initialLoc = await _locationService.getCurrentLocation();
-      _currentLocation = initialLoc;
+      final initialFix = await _locationService.getCurrentFix();
+      _ambulanceFix = initialFix;
+      _currentLocation = initialFix.latLng;
       _locationError = null;
       notifyListeners();
       if (!keepExistingRoute) {
@@ -367,6 +391,7 @@ class TrackingProvider extends ChangeNotifier {
           final position = posWithBearing.latLng;
           final currentBearing = posWithBearing.bearing;
 
+          _ambulanceFix = posWithBearing;
           _currentLocation = position;
           _bearing = currentBearing;
           _locationError = null;

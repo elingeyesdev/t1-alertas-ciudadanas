@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=composer-bin /usr/bin/composer /usr/local/bin/composer
+RUN pecl install redis && docker-php-ext-enable redis
 
 FROM php-runtime AS composer-deps
 WORKDIR /app

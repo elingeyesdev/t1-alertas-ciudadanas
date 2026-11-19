@@ -98,6 +98,26 @@ class TrackingService {
     }
   }
 
+  /// Envía al despacho una muestra GPS capturada por la unidad.
+  Future<void> sendAmbulancePosition(
+    int dispatchId, {
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+    required DateTime capturedAt,
+  }) async {
+    try {
+      await dioClient.dio.post('/dispatches/$dispatchId/ambulance-position', data: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracy_m': accuracy,
+        'captured_at': capturedAt.toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('No se pudo enviar la posición de la ambulancia: ${e.runtimeType}');
+    }
+  }
+
   /// Elimina el tracking para que desaparezca del mapa.
   Future<void> stopTracking(String trackingId) async {
     try {

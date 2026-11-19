@@ -7,6 +7,8 @@ import 'package:alertas_ciudadanas/viewmodels/theme_viewmodel.dart';
 import 'package:alertas_ciudadanas/views/permissions_screen.dart';
 import 'package:alertas_ciudadanas/views/my_account_screen.dart';
 import 'package:alertas_ciudadanas/viewmodels/tracking_provider.dart';
+import 'package:alertas_ciudadanas/services/ambulance_sharing.dart';
+import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -95,6 +97,8 @@ class SettingsScreen extends StatelessWidget {
                       onTap: () => _showThemeDialog(context, themeVM),
                     ),
                     const SizedBox(height: 8),
+                    if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
+                      const _AmbulanceSharingTile(),
 
                     // Servicios de Emergencia
                     Material(
@@ -356,6 +360,44 @@ class SettingsScreen extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AmbulanceSharingTile extends StatefulWidget {
+  const _AmbulanceSharingTile();
+
+  @override
+  State<_AmbulanceSharingTile> createState() => _AmbulanceSharingTileState();
+}
+
+class _AmbulanceSharingTileState extends State<_AmbulanceSharingTile> {
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final sharing = AmbulanceSharing.instance;
+    return ListenableBuilder(
+      listenable: sharing,
+      builder: (context, _) => SwitchListTile(
+        title: const Text('Avisos de ambulancias'),
+        subtitle: const Text('Comparte tu ubicación mientras usas la app para recibir avisos cercanos.'),
+        value: sharing.enabled == true,
+        onChanged: _saving || sharing.enabled == null ? null : (value) async {
+          setState(() => _saving = true);
+          try {
+            await sharing.setEnabled(value);
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No se pudo actualizar el permiso.')),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => _saving = false);
+          }
+        },
       ),
     );
   }

@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CreateDispatchRequest;
 use App\Http\Requests\UpdateDispatchStateRequest;
 use App\Services\DispatchService;
+use App\Enums\StateType;
+use App\Http\Resources\DispatchResource;
+use App\Models\Dispatch;
+use Illuminate\Http\Request;
 
 class DispatchController extends Controller
 {
@@ -21,6 +25,14 @@ class DispatchController extends Controller
 
     public function updateState(UpdateDispatchStateRequest $request, int $id)
     {
-        return $this->dispatches->updateState($id, $request->input('state'));
+        return $this->dispatches->updateState($id, $request->input('state'), $request->user());
+    }
+
+    public function showAssignment(Request $request, Dispatch $dispatch): DispatchResource
+    {
+        abort_unless($dispatch->attended_by === $request->user()->id, 404);
+        abort_unless($dispatch->state === StateType::EnCurso, 409, 'El despacho ya no está en curso.');
+
+        return new DispatchResource($dispatch->load('report.type', 'destination'));
     }
 }

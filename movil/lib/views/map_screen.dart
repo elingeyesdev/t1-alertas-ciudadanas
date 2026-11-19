@@ -10,7 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:alertas_ciudadanas/models/alert_model.dart';
 import 'package:alertas_ciudadanas/repositories/user_repository.dart';
 import 'package:alertas_ciudadanas/viewmodels/alert_viewmodel.dart';
-import 'package:alertas_ciudadanas/services/fcm_service.dart';
+import 'package:alertas_ciudadanas/core/network/dio_client.dart';
 import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/viewmodels/tracking_provider.dart';
@@ -30,7 +30,8 @@ import 'dart:ui' as ui;
 class MapScreen extends StatefulWidget {
   final AlertModel? initialAlert;
   final bool shouldTraceRoute;
-  const MapScreen({super.key, this.initialAlert, this.shouldTraceRoute = false});
+  final int? assignedDispatchId;
+  const MapScreen({super.key, this.initialAlert, this.shouldTraceRoute = false, this.assignedDispatchId});
 
   @override
   State<MapScreen> createState() => MapScreenState();
@@ -43,7 +44,6 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
   LatLng? currentLocation;
   MapController mapController = MapController();
   final _userRepository = UserRepository();
-  final _fcmService = FcmService();
   List<AlertModel> _alerts = const [];
   bool _loadingLocation = true;
   bool _locationFromGps = false;
@@ -254,11 +254,25 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
       await trackingProvider.stopRouteTracking();
       _fitRouteInView();
     } else {
+      final assignedId = _assignedDispatchFor(reportId);
+      EmergencyStationModel? assignedStation;
+      if (assignedId != null) {
+        try {
+          final response = await dioClient.dio.get('/dispatches/$assignedId/assignment');
+          final json = response.data as Map<String, dynamic>;
+          final dispatch = (json['data'] ?? json) as Map<String, dynamic>;
+          assignedStation = EmergencyStationModel.fromJson(dispatch['destination'] as Map<String, dynamic>);
+        } catch (_) {
+          if (mounted) _showRouteMessage('El despacho ya no está disponible.');
+          return;
+        }
+        if (!mounted) return;
+      }
       if (trackingProvider.isFollowingRoute) {
         await trackingProvider.stopRouteTracking();
       }
       _dialogShown = false;
-      final nearestStation = _nearestEmergencyStations.isNotEmpty ? _nearestEmergencyStations.first : null;
+      final nearestStation = assignedStation ?? (_nearestEmergencyStations.isNotEmpty ? _nearestEmergencyStations.first : null);
       final nearestStationId = nearestStation?.id;
       final nearestStationCoords = (nearestStation != null && nearestStation.coordinates.length >= 2)
           ? LatLng(nearestStation.coordinates[1], nearestStation.coordinates[0])
@@ -274,12 +288,16 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
         nearestStationId: nearestStationId,
         nearestStationCoords: nearestStationCoords,
         profileType: profileType,
+        assignedDispatchId: assignedId,
       );
       if (trackingProvider.currentLocation != null) {
         mapController.move(trackingProvider.currentLocation!, 17);
       }
     }
   }
+
+  int? _assignedDispatchFor(int? reportId) =>
+      reportId != null && widget.initialAlert?.id == reportId ? widget.assignedDispatchId : null;
 
   Future<void> _cancelRouteAndTracking() async {
     final trackingProvider = Provider.of<TrackingProvider>(context, listen: false);
@@ -590,7 +608,6 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
     });
 
     getLocation();
-    _initPushNotifications();
 
     if (widget.initialAlert != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -643,7 +660,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
     final initialAlertChanged = widget.initialAlert?.id != oldWidget.initialAlert?.id;
     final traceRouteChanged = widget.shouldTraceRoute != oldWidget.shouldTraceRoute;
 
-    if ((initialAlertChanged || traceRouteChanged) && widget.initialAlert != null) {
+    if ((initialAlertChanged || traceRouteChanged || widget.assignedDispatchId != oldWidget.assignedDispatchId) && widget.initialAlert != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final a = widget.initialAlert!;
@@ -669,17 +686,6 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
       await getLocation();
     } else {
       await _loadAlerts();
-    }
-  }
-
-  Future<void> _initPushNotifications() async {
-    final user = context.read<AuthViewModel>().user;
-    if (user != null) {
-      _isAuthority = _userIsAuthority(user.roleId, user.roleName);
-      await _fcmService.init(user.id);
-      _fcmService.listenToForegroundMessages(() {
-        _loadAlerts();
-      });
     }
   }
 
@@ -1181,7 +1187,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
             : (isLoadingRoute || hasArrived)
                 ? null
                 : () {
-                    if (isRouteTraced || isFollowingRoute) {
+                    if (isRouteTraced || isFollowingRoute || _assignedDispatchFor(reportId) != null) {
                       _toggleRouteTrackingToDestination(
                         lat: destLat,
                         lng: destLng,
@@ -1223,7 +1229,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                   ? 'CARGANDO RUTA...'
                   : isFollowingRoute
                       ? (hasArrived ? 'LLEGÓ AL DESTINO' : 'DETENER RUTA')
-                      : (isRouteTraced ? 'INICIAR NAVEGACIÓN' : 'TRAZAR RUTA'),
+                      : (_assignedDispatchFor(reportId) != null ? 'INICIAR VIAJE' : (isRouteTraced ? 'INICIAR NAVEGACIÓN' : 'TRAZAR RUTA')),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

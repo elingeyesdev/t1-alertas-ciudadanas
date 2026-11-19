@@ -8,11 +8,15 @@ class RouteCorridor {
   final String id;
   final String label;
   final List<LatLng> points;
+  final bool activeAmbulance;
+
+  String get notificationKey => activeAmbulance ? '$id:ambulance' : id;
 
   const RouteCorridor({
     required this.id,
     required this.label,
     required this.points,
+    this.activeAmbulance = false,
   });
 
   factory RouteCorridor.fromJson(Map<String, dynamic> json) {
@@ -20,6 +24,7 @@ class RouteCorridor {
     return RouteCorridor(
       id: (json['id'] ?? '').toString(),
       label: (json['label'] ?? 'Emergencia').toString(),
+      activeAmbulance: json['activeAmbulance'] == true,
       points: rawPoints
           .map(
             (p) => LatLng(
@@ -34,6 +39,7 @@ class RouteCorridor {
   Map<String, dynamic> toJson() => {
     'id': id,
     'label': label,
+    'activeAmbulance': activeAmbulance,
     'points': points
         .map((p) => {'lat': p.latitude, 'lng': p.longitude})
         .toList(),

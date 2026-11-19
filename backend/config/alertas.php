@@ -6,6 +6,15 @@
 */
 
 return [
+    'ambulance' => [
+        'notifications_enabled' => (bool) env('AMBULANCE_NOTIFICATIONS_ENABLED', false),
+        'cache_store' => env('AMBULANCE_CACHE_STORE', 'database'),
+        'queue_connection' => env('AMBULANCE_QUEUE_CONNECTION', 'database'),
+        'corridor_m' => (float) env('AMBULANCE_CORRIDOR_M', 100),
+        'immediate_radius_m' => 25,
+        'min_eta_s' => (float) env('AMBULANCE_MIN_ETA_S', 10),
+        'max_eta_s' => (float) env('AMBULANCE_MAX_ETA_S', 90),
+    ],
 
     // Zona horaria para mostrar fechas en el panel web (/alertas)
     'display_timezone' => env('DISPLAY_TIMEZONE', 'America/La_Paz'),
