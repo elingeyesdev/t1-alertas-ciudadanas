@@ -592,7 +592,10 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
       trackingProvider.addListener(_onTrackingProviderUpdate);
 
       final userId = user?.id;
-      unawaited(RouteCorridorMonitorService.instance.start(userId));
+      unawaited(RouteCorridorMonitorService.instance.start(
+        userId,
+        includeAmbulances: !_isAuthority,
+      ));
       unawaited(_loadEmergencyStations());
     });
 
@@ -612,7 +615,10 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
 
     if (widget.initialAlert != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showAlertBottomSheet(widget.initialAlert!);
+        if (!mounted) return;
+        if (widget.assignedDispatchId == null) {
+          _showAlertBottomSheet(widget.initialAlert!);
+        }
         if (widget.shouldTraceRoute) {
           _startPreTracking(widget.initialAlert!);
         }
@@ -665,7 +671,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final a = widget.initialAlert!;
-        _showAlertBottomSheet(a);
+        if (widget.assignedDispatchId == null) _showAlertBottomSheet(a);
         final c = a.coordinates;
         if (c.length >= 2) {
           mapController.move(LatLng(c[1], c[0]), 18);
@@ -1370,6 +1376,11 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
         .toList();
   }
 
+  Future<void> showAssignedTrip(int dispatchId, AlertModel alert) async {
+    if (!mounted || _assignedDispatchFor(alert.id) != dispatchId) return;
+    await _showAlertActions(alert);
+  }
+
   void _showAlertBottomSheet(AlertModel alert) {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => AlertDetailScreen(
@@ -1403,11 +1414,6 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AlertCard(
-                      alert: alert,
-                      isInBottomSheet: true,
-                      onContribute: () => _handleContribute(alert),
-                    ),
                     if (_isAuthority && incidentLocation != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1420,6 +1426,11 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                           reportId: alert.id,
                         ),
                       ),
+                    AlertCard(
+                      alert: alert,
+                      isInBottomSheet: true,
+                      onContribute: () => _handleContribute(alert),
+                    ),
                   ],
                 ),
               ),

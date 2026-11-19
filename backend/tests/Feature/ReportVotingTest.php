@@ -99,4 +99,37 @@ class ReportVotingTest extends ApiTestCase
             'longitude' => -63.18,
         ])->assertCreated();
     }
+
+    public function test_fire_and_disturbance_notify_neighbors_with_their_saved_sound_preference(): void
+    {
+        $author = $this->neighbor(1, ['fcm_token' => 'author']);
+        $nearby = $this->neighbor(1, ['fcm_token' => 'audible', 'last_latitude' => -17.77866]);
+        $muted = $this->neighbor(1, ['fcm_token' => 'muted']);
+        $this->neighbor(1, ['fcm_token' => 'outside', 'last_latitude' => -17.77864]);
+
+        $this->asUser($nearby)->getJson('/api/auth/emergency-siren')
+            ->assertOk()->assertJsonPath('enabled', true);
+        $this->asUser($muted)->putJson('/api/auth/emergency-siren', ['enabled' => false])
+            ->assertOk()->assertJsonPath('enabled', false);
+        $this->getJson('/api/auth/emergency-siren')->assertOk()->assertJsonPath('enabled', false);
+
+        $fcm = $this->mock(FcmService::class);
+        foreach (['siren' => 'audible', 'silent' => 'muted'] as $mode => $token) {
+            $fcm->shouldReceive('sendToTokens')->twice()->withArgs(
+                fn ($tokens, $title, $body, $data) => $tokens === [$token]
+                    && $data['type'] === 'nearby_report' && $data['emergency_sound'] === $mode
+                    && (int) $data['reportId'] > 0,
+            )->andReturn([]);
+        }
+
+        foreach (['Incendio', 'Disturbio'] as $name) {
+            $type = \App\Models\ReportType::create(['name' => $name, 'base_weight' => 5]);
+            $this->asUser($author)->postJson('/api/reports', [
+                'type' => $type->id,
+                'description' => 'Emergencia de prueba',
+                'latitude' => -17.78,
+                'longitude' => -63.18,
+            ])->assertCreated();
+        }
+    }
 }

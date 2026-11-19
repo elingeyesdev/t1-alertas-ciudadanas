@@ -13,9 +13,11 @@ class RouteCorridorMonitorService {
   final TrackingService _trackingService = TrackingService();
   StreamSubscription<List<Map<String, dynamic>>>? _trackingSub;
   String? _currentUserId;
+  bool _includeAmbulances = true;
 
-  Future<void> start(String? userId) async {
+  Future<void> start(String? userId, {required bool includeAmbulances}) async {
     _currentUserId = userId;
+    _includeAmbulances = includeAmbulances;
     await _trackingSub?.cancel();
     _trackingSub = _trackingService.streamTrackings().listen(_onTrackings);
   }
@@ -31,6 +33,7 @@ class RouteCorridorMonitorService {
 
     for (final vehicle in vehicles) {
       if (vehicle['id'] == _currentUserId) continue;
+      if (!_includeAmbulances && vehicle['profileType'] == 'paramedico') continue;
 
       final status = (vehicle['status'] ?? '').toString();
       if (status != 'active' && status != 'planned') continue;

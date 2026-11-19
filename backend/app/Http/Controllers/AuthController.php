@@ -36,6 +36,19 @@ class AuthController extends Controller
         return new UserResource($request->user());
     }
 
+    public function emergencySiren(Request $request)
+    {
+        return response()->json(['enabled' => (bool) $request->user()->emergency_siren]);
+    }
+
+    public function updateEmergencySiren(Request $request)
+    {
+        $request->validate(['enabled' => ['required', 'boolean']]);
+        $request->user()->forceFill(['emergency_siren' => $request->boolean('enabled')])->save();
+
+        return $this->emergencySiren($request);
+    }
+
     /** POST /api/auth/refresh (público) */
     public function refresh(Request $request)
     {

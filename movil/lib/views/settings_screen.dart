@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:alertas_ciudadanas/core/network/dio_client.dart';
 import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/viewmodels/alert_viewmodel.dart';
@@ -115,6 +116,8 @@ class SettingsScreen extends StatelessWidget {
                     ],
                     if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
                       const _AmbulanceSharingTile(),
+                    if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
+                      _EmergencySirenTile(key: ValueKey(auth.user!.id)),
 
                     // Servicios de Emergencia
                     Material(
@@ -377,6 +380,71 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EmergencySirenTile extends StatefulWidget {
+  const _EmergencySirenTile({super.key});
+
+  @override
+  State<_EmergencySirenTile> createState() => _EmergencySirenTileState();
+}
+
+class _EmergencySirenTileState extends State<_EmergencySirenTile> {
+  static const _endpoint = '/auth/emergency-siren';
+  bool? _enabled;
+  bool _busy = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _busy = true);
+    try {
+      final response = await dioClient.dio.get(_endpoint);
+      if (mounted) setState(() => _enabled = response.data['enabled'] as bool);
+    } catch (_) {
+      if (mounted) setState(() => _enabled = null);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _save(bool enabled) async {
+    setState(() => _busy = true);
+    try {
+      final response = await dioClient.dio.put(_endpoint, data: {'enabled': enabled});
+      if (mounted) setState(() => _enabled = response.data['enabled'] as bool);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar el ajuste de la sirena.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const title = Text('Sirena de emergencias cercanas');
+    if (_enabled == null && !_busy) {
+      return ListTile(
+        title: title,
+        subtitle: const Text('No se pudo cargar el ajuste.'),
+        trailing: TextButton(onPressed: _load, child: const Text('Reintentar')),
+      );
+    }
+    return SwitchListTile(
+      title: title,
+      subtitle: const Text('Incendios y disturbios a 150 m o menos. Si la silencias, seguirás recibiendo avisos.'),
+      value: _enabled ?? true,
+      onChanged: _busy ? null : _save,
     );
   }
 }

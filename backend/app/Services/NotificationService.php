@@ -13,10 +13,13 @@ class NotificationService
 {
     public function __construct(private readonly FcmService $fcm) {}
 
-    /** Notifica a usuarios cercanos (100 m) cuando se crea un reporte. */
+    /** Notifica a usuarios cercanos cuando se crea un reporte. */
     public function notifyNearbyUsers(Report $report): void
     {
         try {
+            $report->loadMissing('type');
+            $type = $report->type?->name ?? 'Incidente';
+            $emergency = ! $report->is_sos && in_array($type, ['Incendio', 'Disturbio'], true);
             $query = User::query()
                 ->whereHas('role', fn ($role) => $role->where('name', 'usuario'))
                 ->whereNotNull('fcm_token')
@@ -27,7 +30,7 @@ class NotificationService
                 $query,
                 $report->latitude,
                 $report->longitude,
-                config('alertas.notifications.nearby_radius_m'),
+                $emergency ? 150 : config('alertas.notifications.nearby_radius_m'),
                 'last_latitude',
                 'last_longitude',
             )->get();
@@ -39,12 +42,25 @@ class NotificationService
                 return;
             }
 
-            $report->loadMissing('type');
+            $data = ['type' => 'nearby_report', 'reportId' => (string) $report->id];
+            if ($emergency) {
+                foreach ($users->unique('fcm_token')->groupBy(fn (User $user) => $user->emergency_siren ? 'siren' : 'silent') as $mode => $group) {
+                    $this->fcm->sendToTokens(
+                        $group->pluck('fcm_token')->all(),
+                        'Emergencia cercana: '.$type,
+                        $report->description ?: 'Se ha reportado una emergencia cerca de ti.',
+                        $data + ['emergency_sound' => $mode],
+                    );
+                }
+
+                return;
+            }
+
             $this->fcm->sendToTokens(
                 $tokens,
                 'Nueva alerta: '.($report->type->name ?? 'Incidente'),
                 $report->description ?: 'Se ha reportado un incidente cerca de ti.',
-                ['type' => 'nearby_report', 'reportId' => (string) $report->id],
+                $data,
             );
         } catch (Throwable $e) {
             Log::error('Error notificando usuarios cercanos', ['error' => $e->getMessage()]);
