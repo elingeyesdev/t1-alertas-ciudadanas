@@ -8,14 +8,56 @@ services:
       APP_DEBUG: "true"
       SESSION_SECURE_COOKIE: "false"
       LOG_CHANNEL: stderr
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      AMBULANCE_CACHE_STORE: redis
+      AMBULANCE_QUEUE_CONNECTION: redis
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
-    volumes:
+    volumes: &local-app-volumes
       - ./backend:/var/www/html
       - ./docker/empty.env:/var/www/html/.env:ro
       - local-vendor:/var/www/html/vendor
       - local-public-build:/var/www/html/public/build
       - uploads:/var/www/html/storage/app/public
+
+  redis:
+    image: docker.io/library/redis:7-bookworm
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ambulance-worker: &ambulance-runtime
+    extends:
+      file: compose.yaml
+      service: app
+    image: alertas-ciudadanas-app:local
+    build: !reset null
+    ports: !reset []
+    volumes: *local-app-volumes
+    healthcheck:
+      disable: true
+    environment:
+      APP_ENV: local
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      AMBULANCE_CACHE_STORE: redis
+      AMBULANCE_QUEUE_CONNECTION: redis
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["php", "artisan", "queue:work", "redis", "--queue=ambulance", "--timeout=25"]
+
+  ambulance-scheduler:
+    <<: *ambulance-runtime
+    command: ["sh", "-c", "while true; do php artisan ambulance:deliver-alerts; sleep 5; done"]
 
   vite:
     image: node:22-bookworm-slim

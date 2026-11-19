@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Jobs\NotifyAmbulanceAssignment;
+
 use App\Enums\StateReport;
 use App\Enums\StateType;
 use App\Models\EmergencyStation;
@@ -149,7 +151,11 @@ class ReportController extends PanelController
         ]);
 
         return $this->run(
-            fn () => $this->dispatches->create($id, (int) $data['station_id'], $data['authority_id']),
+            function () use ($id, $data) {
+                $dispatch = $this->dispatches->create($id, (int) $data['station_id'], $data['authority_id']);
+                NotifyAmbulanceAssignment::dispatch($dispatch->id)
+                    ->onConnection(config('alertas.ambulance.queue_connection'))->onQueue('ambulance')->afterCommit();
+            },
             'Unidad despachada.'
         );
     }
@@ -158,6 +164,6 @@ class ReportController extends PanelController
     {
         $data = $request->validate(['state' => ['required', Rule::enum(StateType::class)]]);
 
-        return $this->run(fn () => $this->dispatches->updateState($dispatchId, $data['state']), 'Estado del despacho actualizado.');
+        return $this->run(fn () => $this->dispatches->updateState($dispatchId, $data['state'], $request->user()), 'Estado del despacho actualizado.');
     }
 }

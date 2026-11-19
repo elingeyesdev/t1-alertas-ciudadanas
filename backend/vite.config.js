@@ -24,6 +24,9 @@ export default defineConfig({
         ...(process.env.VITE_DOCKER === 'true' && {
             host: '0.0.0.0',
             origin: `http://${process.env.VITE_HMR_HOST || 'localhost'}:${process.env.VITE_HMR_CLIENT_PORT || '5173'}`,
+            cors: {
+                origin: [/^http:\/\/(localhost|127\.0\.0\.1):8080$/],
+            },
             hmr: {
                 host: process.env.VITE_HMR_HOST || 'localhost',
                 clientPort: Number(process.env.VITE_HMR_CLIENT_PORT || 5173),

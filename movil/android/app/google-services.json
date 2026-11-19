@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "87060253410",
+    "project_id": "alertas-dff8a",
+    "storage_bucket": "alertas-dff8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:87060253410:android:e78252a02f29535b3becbb",
+        "android_client_info": {
+          "package_name": "com.tuempresa.appalertas.app_alertas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP-gpeVgcyIrb0tqsnq8Bczo1ey1Eofno"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

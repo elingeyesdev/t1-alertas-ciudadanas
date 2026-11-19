@@ -54,6 +54,7 @@ class RouteCorridorMonitorService {
           id: (vehicle['id'] ?? '').toString(),
           label: (vehicle['type'] ?? 'Emergencia').toString(),
           points: parsedPoints,
+          activeAmbulance: status == 'active' && vehicle['profileType'] == 'paramedico',
         ),
       );
     }

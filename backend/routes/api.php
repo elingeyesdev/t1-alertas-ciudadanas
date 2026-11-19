@@ -12,6 +12,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTypeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\AmbulanceTrackingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -104,6 +105,18 @@ Route::middleware('auth:api')->group(function () {
 
     // Despachos
     Route::post('dispatches', [DispatchController::class, 'store'])->middleware('role:autoridad,admin');
+    Route::get('dispatches/{dispatch}/assignment', [DispatchController::class, 'showAssignment'])
+        ->whereNumber('dispatch')->middleware('role:autoridad');
+    Route::post('dispatches/{dispatch}/ambulance-position', [AmbulanceTrackingController::class, 'unitPosition'])
+        ->whereNumber('dispatch')->middleware(['role:autoridad', 'throttle:30,1']);
+    Route::put('ambulance-alerts/consent', [AmbulanceTrackingController::class, 'consent'])
+        ->middleware('role:usuario');
+    Route::get('ambulance-alerts/consent', [AmbulanceTrackingController::class, 'consentStatus'])
+        ->middleware('role:usuario');
+    Route::post('ambulance-alerts/{alert}/receipt', [AmbulanceTrackingController::class, 'receipt'])
+        ->whereUuid('alert')->middleware(['role:usuario', 'throttle:30,1']);
+    Route::post('ambulance-alerts/position', [AmbulanceTrackingController::class, 'citizenPosition'])
+        ->middleware('role:usuario')->middleware('throttle:30,1');
     Route::patch('dispatches/{id}/state', [DispatchController::class, 'updateState'])->whereNumber('id')->middleware('role:autoridad,admin');
 
     // Correo

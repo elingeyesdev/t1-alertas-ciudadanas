@@ -28,6 +28,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'mapbox' => [
+        'directions_token' => env('MAPBOX_DIRECTIONS_TOKEN'),
+        'directions_profile' => env('MAPBOX_DIRECTIONS_PROFILE', 'mapbox/driving'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

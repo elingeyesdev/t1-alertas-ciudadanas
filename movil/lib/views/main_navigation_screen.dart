@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/alert_viewmodel.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
+import 'package:alertas_ciudadanas/core/network/dio_client.dart';
+import 'package:alertas_ciudadanas/services/fcm_service.dart';
+import 'package:alertas_ciudadanas/services/ambulance_sharing.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   static final GlobalKey<MainNavigationScreenState> navigationKey = GlobalKey<MainNavigationScreenState>();
@@ -21,6 +24,9 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
   int currentIndex = 0;
   AlertModel? selectedAlert;
   bool traceRouteOnMap = false;
+  int? selectedDispatchId;
+  final _fcm = FcmService();
+  String? _ambulanceSharingUser;
   
   final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
   final GlobalKey<RecentActivityScreenState> _recentActivityKey = GlobalKey<RecentActivityScreenState>();
@@ -35,26 +41,60 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthViewModel>();
-      context.read<AlertViewModel>().fetchAlerts(
+      final alerts = context.read<AlertViewModel>();
+      alerts.fetchAlerts(
             includeDeleted: isStaffRole(auth.user?.roleId, auth.user?.roleName),
           );
+      final user = auth.user;
+      if (user != null) {
+        if (!isStaffRole(user.roleId, user.roleName)) {
+          _ambulanceSharingUser = user.id;
+          AmbulanceSharing.instance.attach(user.id);
+        }
+        _fcm.init(user.id, onAssignmentOpened: _openAssignment).then((_) {
+          if (!mounted) return;
+          _fcm.listenToForegroundMessages(() => alerts.fetchAlerts(
+            includeDeleted: isStaffRole(user.roleId, user.roleName),
+          ));
+        });
+      }
     });
   }
 
   @override
   void dispose() {
+    AmbulanceSharing.instance.detach(_ambulanceSharingUser);
+    _fcm.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void navigateToMap(AlertModel alert, {bool traceRoute = false}) {
+  void navigateToMap(AlertModel alert, {bool traceRoute = false, int? dispatchId}) {
     setState(() {
       selectedAlert = alert;
+      selectedDispatchId = dispatchId;
       traceRouteOnMap = traceRoute;
       currentIndex = 1;
     });
     if (_pageController.hasClients) {
       _pageController.jumpToPage(1);
+    }
+  }
+
+  Future<void> _openAssignment(int id) async {
+    try {
+      final response = await dioClient.dio.get('/dispatches/$id/assignment');
+      final json = response.data as Map<String, dynamic>;
+      final assignment = (json['data'] ?? json) as Map<String, dynamic>;
+      final alert = AlertModel.fromJson(assignment['response_report'] as Map<String, dynamic>);
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      navigateToMap(alert, dispatchId: id);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El despacho ya no está disponible.')),
+      );
     }
   }
 
@@ -131,6 +171,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           MapScreen(
             key: _mapKey,
             initialAlert: selectedAlert,
+            assignedDispatchId: selectedDispatchId,
             shouldTraceRoute: traceRouteOnMap,
           ),
           RecentActivityScreen(

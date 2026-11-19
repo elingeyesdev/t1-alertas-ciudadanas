@@ -5,8 +5,22 @@ import 'package:latlong2/latlong.dart';
 class PositionWithBearing {
   final LatLng latLng;
   final double bearing;
+  final double accuracy;
+  final DateTime? capturedAt;
 
-  const PositionWithBearing({required this.latLng, required this.bearing});
+  const PositionWithBearing({
+    required this.latLng,
+    required this.bearing,
+    required this.accuracy,
+    required this.capturedAt,
+  });
+
+  factory PositionWithBearing.fromPosition(Position position) => PositionWithBearing(
+    latLng: LatLng(position.latitude, position.longitude),
+    bearing: position.heading,
+    accuracy: position.accuracy,
+    capturedAt: position.timestamp,
+  );
 }
 
 class LocationService {
@@ -37,13 +51,17 @@ class LocationService {
   }
 
   Future<LatLng> getCurrentLocation() async {
+    return (await getCurrentFix()).latLng;
+  }
+
+  Future<PositionWithBearing> getCurrentFix() async {
     await ensureLocationAccess();
 
     final position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    return LatLng(position.latitude, position.longitude);
+    return PositionWithBearing.fromPosition(position);
   }
 
   Future<Stream<LatLng>> getLocationStream() async {
@@ -64,12 +82,7 @@ class LocationService {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5,
       ),
-    ).map(
-      (position) => PositionWithBearing(
-        latLng: LatLng(position.latitude, position.longitude),
-        bearing: position.heading,
-      ),
-    );
+    ).map(PositionWithBearing.fromPosition);
   }
 }
 
