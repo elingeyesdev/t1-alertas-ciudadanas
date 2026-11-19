@@ -1,4 +1,4 @@
-// Utilidades de mapa compartidas (Leaflet + teselas de Mapbox u OpenStreetMap).
+// Utilidades de mapa compartidas (Leaflet + teselas de Mapbox).
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -7,22 +7,19 @@ const config = window.PanelConfig || {}
 export const DEFAULT_CENTER = config.center || [-17.7833, -63.1821]
 
 export function createMap(element, options = {}) {
+    if (!config.mapboxToken) {
+        throw new Error('Falta MAPBOX_ACCESS_TOKEN para mostrar el mapa del panel.')
+    }
+
     const map = L.map(element, { zoomControl: true, ...options }).setView(options.center || DEFAULT_CENTER, options.zoom || 13)
 
-    if (config.mapboxToken) {
-        L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token={token}', {
-            token: config.mapboxToken,
-            tileSize: 512,
-            zoomOffset: -1,
-            maxZoom: 19,
-            attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(map)
-    } else {
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(map)
-    }
+    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token={token}', {
+        token: config.mapboxToken,
+        tileSize: 512,
+        zoomOffset: -1,
+        maxZoom: 19,
+        attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map)
 
     return map
 }

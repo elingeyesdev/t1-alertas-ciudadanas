@@ -54,6 +54,11 @@ class Report extends Model
         return $this->hasMany(Image::class);
     }
 
+    public function videos(): HasMany
+    {
+        return $this->hasMany(ReportVideo::class);
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);

@@ -12,6 +12,7 @@ class AlertModel {
   final DateTime? expiresAt;
   final List<String> images; // Simplificado a lista de URLs (Strings)
   final bool verified;
+  final int videosCount;
   final String? zone;
 
   const AlertModel({
@@ -26,6 +27,7 @@ class AlertModel {
     this.expiresAt,
     this.images = const [],
     this.verified = false,
+    this.videosCount = 0,
     this.zone,
   });
 
@@ -96,6 +98,7 @@ class AlertModel {
           : null,
       images: images,
       verified: json['verified'] == true,
+      videosCount: (json['videos_count'] as num?)?.toInt() ?? 0,
       zone: json['zone']?.toString(),
     );
   }
@@ -112,6 +115,7 @@ class AlertModel {
     'expires_at': expiresAt?.toIso8601String(),
     'images': images,
     'verified': verified,
+    'videos_count': videosCount,
     'zone': zone,
   };
 }

@@ -367,8 +367,8 @@ php artisan serve --host=0.0.0.0 --port=8000
 php artisan reverb:start --port=6001   # en otra terminal, para el mapa en tiempo real
 ```
 
-En `backend/.env` puedes poner `MAPBOX_ACCESS_TOKEN=pk...` (token público) para usar el mapa de
-Mapbox; si lo dejas vacío se usa OpenStreetMap. No subas tu token a Git.
+Configura `MAPBOX_ACCESS_TOKEN=pk...` (token público) en `backend/.env` para mostrar los mapas
+del panel con Mapbox. El token es obligatorio; no subas tu token real a Git.
 
 Los controladores están en `app/Http/Controllers/Panel/` y reutilizan los mismos servicios que la API
 (`ReportService`, `UserService`, `DispatchService`, etc.), así que la app móvil y el panel siguen las

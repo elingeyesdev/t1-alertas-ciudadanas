@@ -81,6 +81,7 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', 'destroy')->whereNumber('id');
         Route::post('{id}/comments', 'storeComment')->whereNumber('id');
         Route::get('{id}/comments', 'comments')->whereNumber('id');
+        Route::post('{id}/videos', 'uploadVideo')->whereNumber('id');
         Route::post('{id}/images', 'uploadImage')->whereNumber('id');
         Route::post('{id}/images/{ignoredUserId}', 'uploadImage')->whereNumber('id'); // compatibilidad con la app actual
         Route::patch('{id}/verify', 'verify')->whereNumber('id')->middleware('role:admin,autoridad');
