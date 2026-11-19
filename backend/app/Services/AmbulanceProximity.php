@@ -56,6 +56,7 @@ class AmbulanceProximity
                        ST_DWithin(position, unit_position, ?) AS immediate
                 FROM route CROSS JOIN ambulance_alert_locations AS locations
                 JOIN users ON users.id = locations.user_id
+                JOIN roles ON roles.id = users.role_id AND roles.name = 'usuario'
                 WHERE users.deleted_at IS NULL AND locations.user_id <> route.attended_by
                   AND (?::uuid IS NULL OR locations.user_id = ?::uuid)
                   AND captured_at >= NOW() - INTERVAL '60 seconds' AND accuracy_m <= 30

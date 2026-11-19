@@ -40,6 +40,8 @@ Route::middleware('auth:api')->group(function () {
     // Auth
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::get('auth/emergency-siren', [AuthController::class, 'emergencySiren'])->middleware('role:usuario');
+    Route::put('auth/emergency-siren', [AuthController::class, 'updateEmergencySiren'])->middleware('role:usuario');
 
     // Usuarios
     Route::prefix('users')->controller(UserController::class)->group(function () {

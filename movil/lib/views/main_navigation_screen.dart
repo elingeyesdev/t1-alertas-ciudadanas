@@ -29,6 +29,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
   int? selectedDispatchId;
   final _fcm = FcmService();
   String? _ambulanceSharingUser;
+  int? _openingDispatchId;
   
   final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
   final GlobalKey<RecentActivityScreenState> _recentActivityKey = GlobalKey<RecentActivityScreenState>();
@@ -53,12 +54,15 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           _ambulanceSharingUser = user.id;
           AmbulanceSharing.instance.attach(user.id);
         }
-        _fcm.init(user.id, onAssignmentOpened: _openAssignment, onCaseOpened: _openCase, onReportOpened: _openReport).then((_) {
-          if (!mounted) return;
-          _fcm.listenToForegroundMessages(() => alerts.fetchAlerts(
+        _fcm.init(
+          user.id,
+          onAssignmentOpened: _openAssignment,
+          onCaseOpened: _openCase,
+          onReportOpened: _openReport,
+          onForegroundReport: () => alerts.fetchAlerts(
             includeDeleted: isStaffRole(user.roleId, user.roleName),
-          ));
-        });
+          ),
+        );
       }
     });
   }
@@ -84,19 +88,30 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Future<void> _openAssignment(int id) async {
+    if (!mounted ||
+        context.read<AuthViewModel>().user?.authorityProfileType != 'paramedico') {
+      return;
+    }
+    if (_openingDispatchId == id) return;
+    _openingDispatchId = id;
     try {
       final response = await dioClient.dio.get('/dispatches/$id/assignment');
       final json = response.data as Map<String, dynamic>;
       final assignment = (json['data'] ?? json) as Map<String, dynamic>;
       final alert = AlertModel.fromJson(assignment['response_report'] as Map<String, dynamic>);
-      if (!mounted) return;
+      if (!mounted || _openingDispatchId != id) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
       navigateToMap(alert, dispatchId: id);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || _openingDispatchId != id) return;
+      await _mapKey.currentState?.showAssignedTrip(id, alert);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('El despacho ya no está disponible.')),
       );
+    } finally {
+      if (_openingDispatchId == id) _openingDispatchId = null;
     }
   }
 

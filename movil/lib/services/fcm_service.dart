@@ -10,6 +10,22 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FcmService {
+  static const _notificationSound = RawResourceAndroidNotificationSound('alert_notification');
+  static const _generalChannel = AndroidNotificationChannel(
+    'app_notifications_v1', 'Notificaciones',
+    importance: Importance.high,
+    sound: _notificationSound,
+  );
+  static const _emergencySiren = AndroidNotificationChannel(
+    'nearby_emergency_siren_v3', 'Sirena de emergencias cercanas',
+    importance: Importance.high,
+    sound: RawResourceAndroidNotificationSound('nearby_emergency_short'),
+  );
+  static const _emergencySilent = AndroidNotificationChannel(
+    'nearby_emergency_silent_v1', 'Emergencias cercanas sin sonido',
+    importance: Importance.high,
+    playSound: false,
+  );
   static const _ambulanceChannel = 'ambulance_alerts_sound_v3';
   static const _ambulanceAudio = MethodChannel('alertas/ambulance_audio');
   static const _ambulanceSound = RawResourceAndroidNotificationSound('ambulance_proximity_siren');
@@ -28,7 +44,7 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened, void Function(int)? onReportOpened}) async {
+  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened, void Function(int)? onReportOpened, VoidCallback? onForegroundReport}) async {
     _onAssignmentOpened = onAssignmentOpened;
     _onCaseOpened = onCaseOpened;
     _onReportOpened = onReportOpened;
@@ -65,10 +81,18 @@ class FcmService {
             sound: _ambulanceSound,
             audioAttributesUsage: AudioAttributesUsage.alarm,
           ));
+      final androidNotifications = _localNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await androidNotifications?.createNotificationChannel(_emergencySiren);
+      await androidNotifications?.createNotificationChannel(_emergencySilent);
+      await androidNotifications?.createNotificationChannel(_generalChannel);
       await _firebaseMessaging.setForegroundNotificationPresentationOptions(
         alert: true, badge: true, sound: true,
       );
       if (_disposed) return;
+      if (onForegroundReport != null) {
+        listenToForegroundMessages(onForegroundReport);
+      }
       _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen(_recordOpened);
       final initial = await _firebaseMessaging.getInitialMessage();
       if (initial != null && !_disposed) _recordOpened(initial);
@@ -125,30 +149,37 @@ class FcmService {
       final assignmentId = _assignmentId(message);
       final caseId = _caseId(message);
       final reportId = _nearbyReportId(message);
+      final emergencyChannel = switch (message.data['emergency_sound']) {
+        'siren' => _emergencySiren,
+        'silent' => _emergencySilent,
+        _ => null,
+      };
       if (alertId != null) unawaited(_recordReceipt(alertId, 'foreground'));
       final playedSiren = alertId != null &&
           !kIsWeb && defaultTargetPlatform == TargetPlatform.android &&
           await _playAmbulanceSiren();
 
       if (_disposed) return;
-      if (notification != null && (android != null || (alertId != null && defaultTargetPlatform == TargetPlatform.android))) {
+      if (notification != null && (android != null ||
+          ((alertId != null || emergencyChannel != null) &&
+              defaultTargetPlatform == TargetPlatform.android))) {
         _localNotificationsPlugin.show(
           id: (assignmentId == null ? alertId?.hashCode : 'dispatch:$assignmentId'.hashCode) ?? notification.hashCode,
           title: notification.title,
           body: notification.body,
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              alertId != null ? _ambulanceChannel : (isVerified ? 'verified_channel' : 'alert_channel'),
-              alertId != null ? 'Avisos de ambulancias' : (isVerified ? 'Verificaciones' : 'Alertas'),
+              emergencyChannel?.id ?? (alertId != null ? _ambulanceChannel : _generalChannel.id),
+              emergencyChannel?.name ?? (alertId != null ? 'Avisos de ambulancias' : _generalChannel.name),
               channelDescription: alertId != null ? 'Avisos cuando una ambulancia se aproxima a tu ubicación.' : isVerified
                   ? 'Cuando cambia el estado de tu reporte'
                   : 'Canal para alertas de incidentes cercanos',
               importance: Importance.max,
               priority: Priority.high,
-              playSound: true,
-              silent: playedSiren,
+              playSound: emergencyChannel?.playSound ?? true,
+              silent: playedSiren || emergencyChannel == _emergencySilent,
               audioAttributesUsage: alertId != null ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
-              sound: alertId != null ? _ambulanceSound : null,
+              sound: alertId != null ? _ambulanceSound : (emergencyChannel ?? _generalChannel).sound,
               icon: '@mipmap/ic_launcher',
             ),
           ),
@@ -158,6 +189,7 @@ class FcmService {
         );
       }
       
+      if (assignmentId != null) _onAssignmentOpened?.call(assignmentId);
       if (alertId == null) onMessageReceived();
     });
   }
@@ -252,12 +284,13 @@ class FcmService {
       body: message.notification?.body ?? 'Toca para ver su ubicación.',
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
-          'trust_circle_channel',
+          'trust_circle_sound_v2',
           'Círculo de confianza',
           channelDescription: 'Cuando alguien de tu círculo activa el botón de pánico',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          sound: _notificationSound,
           icon: '@mipmap/ic_launcher',
         ),
       ),

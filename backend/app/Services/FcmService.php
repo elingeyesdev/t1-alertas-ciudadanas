@@ -96,6 +96,21 @@ class FcmService
         $url = "https://fcm.googleapis.com/v1/projects/{$credentials['project_id']}/messages:send";
         // FCM exige que todos los valores de "data" sean strings
         $data = array_map(fn ($v) => (string) $v, $data);
+        $platformOptions = ['android' => ['notification' => [
+            'channel_id' => 'app_notifications_v1',
+            'sound' => 'alert_notification',
+        ]]];
+        if (isset($data['emergency_sound'])) {
+            $audible = $data['emergency_sound'] === 'siren';
+            $android = ['channel_id' => $audible ? 'nearby_emergency_siren_v3' : 'nearby_emergency_silent_v1'];
+            if ($audible) {
+                $android['sound'] = 'nearby_emergency_short';
+            }
+            $platformOptions = ['android' => ['priority' => 'high', 'notification' => $android]];
+            if ($audible) {
+                $platformOptions['apns'] = ['payload' => ['aps' => ['sound' => 'default']]];
+            }
+        }
 
         foreach ($tokens as $token) {
             try {
@@ -104,7 +119,7 @@ class FcmService
                         'token' => $token,
                         'notification' => ['title' => $title, 'body' => $body],
                         'data' => (object) $data,
-                    ],
+                    ] + $platformOptions,
                 ]);
                 $response->successful() ? $result['successCount']++ : $result['failureCount']++;
             } catch (Throwable $e) {
