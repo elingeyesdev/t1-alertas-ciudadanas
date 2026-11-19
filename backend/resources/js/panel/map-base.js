@@ -13,15 +13,19 @@ export function createMap(element, options = {}) {
 
     const map = L.map(element, { zoomControl: true, ...options }).setView(options.center || DEFAULT_CENTER, options.zoom || 13)
 
-    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token={token}', {
+    mapboxLayer('streets-v12').addTo(map)
+
+    return map
+}
+
+export function mapboxLayer(style) {
+    return L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/{z}/{x}/{y}@2x?access_token={token}`, {
         token: config.mapboxToken,
         tileSize: 512,
         zoomOffset: -1,
         maxZoom: 19,
         attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map)
-
-    return map
+    })
 }
 
 /** Marcador circular con ícono de Tabler. */

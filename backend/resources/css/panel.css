@@ -76,3 +76,16 @@ body.panel-page, body.panel-login-page { min-height: 100vh; color: var(--panel-i
     .live-map { height: 60vh; min-height: 360px; }
     .live-list-card .list-group { max-height: 320px; }
 }
+.weight-info-trigger { width: 44px; height: 44px; color: var(--tblr-primary); }
+.weight-dialog { width: min(480px, calc(100% - 2rem)); max-height: calc(100% - 2rem); margin: auto; padding: 0; overflow: auto; overscroll-behavior: contain; border-radius: 16px; box-shadow: 0 12px 36px oklch(0 0 0 / .2); }
+.weight-dialog:not([open]) { display: none; }
+.weight-dialog[open] { display: block; position: fixed; inset: 0; height: fit-content; min-height: 0; max-height: calc(100dvh - 2rem); }
+.map-workspace-controls .form-select { width: auto; max-width: 100%; }
+.weight-dialog::backdrop { background: oklch(0 0 0 / .38); backdrop-filter: blur(6px); }
+@media (prefers-reduced-motion: no-preference) {
+    .weight-dialog[open] { animation: weight-dialog-enter 200ms ease-out both; }
+    .weight-dialog[open]::backdrop { animation: weight-backdrop-enter 180ms ease-out both; }
+}
+@keyframes weight-dialog-enter { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes weight-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+[data-report-list] { overscroll-behavior: contain; }

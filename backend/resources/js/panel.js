@@ -71,3 +71,10 @@ document.addEventListener('submit', (event) => {
     if (event.defaultPrevented || !(form instanceof HTMLFormElement) || form.method.toLowerCase() === 'get') return
     form.querySelectorAll('button[type="submit"], button:not([type])').forEach((b) => { b.disabled = true })
 })
+
+
+const weightDialog = document.getElementById('report-weight-dialog')
+document.querySelector('[data-weight-guide]')?.addEventListener('click', () => {
+    weightDialog?.showModal()
+})
+

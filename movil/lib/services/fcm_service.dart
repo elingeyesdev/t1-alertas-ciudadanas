@@ -19,6 +19,7 @@ class FcmService {
   bool _disposed = false;
   void Function(int)? _onAssignmentOpened;
   void Function(int)? _onCaseOpened;
+  void Function(int)? _onReportOpened;
   /// true si Firebase se inicializó (existe google-services.json)
   bool get _firebaseReady => Firebase.apps.isNotEmpty;
 
@@ -27,9 +28,10 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened}) async {
+  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened, void Function(int)? onReportOpened}) async {
     _onAssignmentOpened = onAssignmentOpened;
     _onCaseOpened = onCaseOpened;
+    _onReportOpened = onReportOpened;
     if (!_firebaseReady) {
       debugPrint('FCM omitido: Firebase no está configurado');
       return;
@@ -122,6 +124,7 @@ class FcmService {
       final alertId = _ambulanceId(message);
       final assignmentId = _assignmentId(message);
       final caseId = _caseId(message);
+      final reportId = _nearbyReportId(message);
       if (alertId != null) unawaited(_recordReceipt(alertId, 'foreground'));
       final playedSiren = alertId != null &&
           !kIsWeb && defaultTargetPlatform == TargetPlatform.android &&
@@ -151,7 +154,7 @@ class FcmService {
           ),
           payload: assignmentId != null
               ? 'dispatch:$assignmentId'
-              : (caseId != null ? 'case:$caseId' : alertId),
+              : (caseId != null ? 'case:$caseId' : (reportId != null ? 'report:$reportId' : alertId)),
         );
       }
       
@@ -175,6 +178,11 @@ class FcmService {
           : null;
 
   void _recordOpened(RemoteMessage message) {
+    final reportId = _nearbyReportId(message);
+    if (reportId != null) {
+      _onReportOpened?.call(reportId);
+      return;
+    }
     final caseId = _caseId(message);
     if (caseId != null) {
       _onCaseOpened?.call(caseId);
@@ -200,8 +208,18 @@ class FcmService {
       ? int.tryParse('${message.data['reportId']}')
       : null;
 
+  int? _nearbyReportId(RemoteMessage message) =>
+      message.data['type'] == 'nearby_report'
+          ? int.tryParse('${message.data['reportId']}')
+          : null;
+
   void _openPayload(String? payload) {
     if (_disposed || payload == null) return;
+    if (payload.startsWith('report:')) {
+      final id = int.tryParse(payload.substring('report:'.length));
+      if (id != null) _onReportOpened?.call(id);
+      return;
+    }
     if (payload.startsWith('case:')) {
       final id = int.tryParse(payload.substring('case:'.length));
       if (id != null) _onCaseOpened?.call(id);

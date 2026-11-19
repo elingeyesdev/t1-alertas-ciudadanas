@@ -72,7 +72,7 @@ class ReportController extends PanelController
         ]);
     }
 
-    public function show(int $id): View
+    public function show(int $id, \App\Services\ReportVoting $voting): View
     {
         $report = Report::withTrashed()
             ->with([
@@ -86,6 +86,7 @@ class ReportController extends PanelController
 
         return view('panel.reportes.show', [
             'report' => $report,
+            'voting' => $voting->summary($report),
             'stations' => EmergencyStation::orderBy('name')->get(),
             'authorities' => User::with('authorityProfile')
                 ->whereHas('role', fn ($q) => $q->where('name', 'autoridad'))
