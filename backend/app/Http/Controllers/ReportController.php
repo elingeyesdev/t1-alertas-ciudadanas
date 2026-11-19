@@ -8,6 +8,7 @@ use App\Http\Requests\ImageUploadRequest;
 use App\Http\Requests\NearbyReportsRequest;
 use App\Http\Requests\SimilarReportsRequest;
 use App\Models\Report;
+use App\Services\CaseTracking;
 use App\Services\CommentService;
 use App\Services\ReportService;
 use Illuminate\Http\Request;
@@ -99,6 +100,23 @@ class ReportController extends Controller
     public function show(int $id)
     {
         return $this->reports->findOne($id);
+    }
+
+    /**
+     * GET /api/reports/{id}/case — HU-26 seguimiento del caso.
+     * Solo quien creó el reporte (o un administrador) ve la línea de tiempo
+     * y el detalle de las unidades despachadas.
+     */
+    public function caseTracking(Request $request, int $id, CaseTracking $cases)
+    {
+        $report = Report::withTrashed()->find($id);
+        if (! $report) {
+            abort(404, 'Reporte no encontrado');
+        }
+        $user = $request->user();
+        abort_unless($report->creator_id === $user->id || $user->hasRole('admin'), 403, 'Solo quien creó el reporte puede ver su seguimiento');
+
+        return response()->json($cases->summary($report));
     }
 
     public function comments(int $id)

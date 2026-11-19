@@ -7,12 +7,13 @@ use App\Http\Requests\EmergencyPositionRequest;
 use App\Jobs\EvaluateAmbulanceRoute;
 use App\Models\Dispatch;
 use App\Services\AmbulanceTracking;
+use App\Services\CaseTracking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AmbulanceTrackingController extends Controller
 {
-    public function unitPosition(EmergencyPositionRequest $request, Dispatch $dispatch, AmbulanceTracking $tracking)
+    public function unitPosition(EmergencyPositionRequest $request, Dispatch $dispatch, AmbulanceTracking $tracking, CaseTracking $cases)
     {
         $user = $request->user();
         abort_unless(
@@ -20,6 +21,10 @@ class AmbulanceTrackingController extends Controller
             403,
         );
         abort_unless($dispatch->state === StateType::EnCurso, 409);
+
+        if ($dispatch->departed_at === null) {
+            $cases->markEnRoute($dispatch, $user);
+        }
 
         $position = $request->position();
         $cache = $tracking->cache();

@@ -54,6 +54,11 @@ class Report extends Model
         return $this->hasMany(Image::class);
     }
 
+    public function caseEvents(): HasMany
+    {
+        return $this->hasMany(CaseEvent::class)->orderBy('id');
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
