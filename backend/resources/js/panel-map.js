@@ -36,6 +36,7 @@ if (mapEl) {
             <div class="small text-secondary">${escapeHtml(r.zone)} · ${timeAgo(r.created_at)}</div>
             <p class="my-2">${escapeHtml(r.description)}</p>
             ${r.images?.[0] ? `<img src="${escapeHtml(r.images[0].url)}" alt="" class="popup-img mb-2">` : ''}
+            ${r.is_sos ? '<span class="badge bg-red text-red-fg me-1">SOS</span>' : ''}
             <span class="badge ${r.verified ? 'bg-teal-lt' : 'bg-secondary-lt'}">${r.verified ? 'Verificada' : 'Sin verificar'}</span>
             <a class="btn btn-sm btn-primary w-100 mt-2" href="${config.reportUrl}/${r.id}">Ver detalle</a>`
     }
@@ -43,7 +44,10 @@ if (mapEl) {
     function upsertReport(r, isNew = false) {
         if (r.status && r.status !== 'activo') return removeReport(r.id)
         state.reports.set(r.id, r)
-        const icon = pinIcon(r.verified ? 'teal' : 'red', 'ti-alert-triangle', isNew)
+        // HU-24: el SOS se ve distinto y siempre late
+        const icon = r.is_sos
+            ? pinIcon('red', 'ti-sos', true)
+            : pinIcon(r.verified ? 'teal' : 'red', 'ti-alert-triangle', isNew)
         let marker = reportMarkers.get(r.id)
         if (marker) {
             marker.setLatLng(latLng(r.coordinates)).setIcon(icon).setPopupContent(reportPopup(r))
@@ -61,13 +65,14 @@ if (mapEl) {
     }
 
     function renderList() {
-        const reports = [...state.reports.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        const reports = [...state.reports.values()].sort((a, b) =>
+            (b.is_sos ? 1 : 0) - (a.is_sos ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at))
         countEl.textContent = reports.length
         listEl.innerHTML = reports.length
             ? reports.map((r) => `
                 <button type="button" class="list-group-item list-group-item-action" data-focus="${r.id}">
                     <div class="d-flex justify-content-between gap-2">
-                        <strong class="text-truncate">${escapeHtml(r.type?.name ?? 'Alerta')}</strong>
+                        <strong class="text-truncate${r.is_sos ? ' text-red' : ''}">${r.is_sos ? '🚨 ' : ''}${escapeHtml(r.type?.name ?? 'Alerta')}</strong>
                         <span class="text-secondary small text-nowrap">${timeAgo(r.created_at)}</span>
                     </div>
                     <div class="text-secondary small text-truncate">${escapeHtml(r.zone)} · ${escapeHtml(r.description)}</div>

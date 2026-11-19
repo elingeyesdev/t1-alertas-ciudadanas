@@ -11,6 +11,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTypeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SosController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\TrustCircleController;
 use App\Http\Controllers\AmbulanceTrackingController;
@@ -89,6 +90,9 @@ Route::middleware('auth:api')->group(function () {
         Route::patch('{id}/resolve', 'resolve')->whereNumber('id');
         Route::patch('{id}/reactivate', 'reactivate')->whereNumber('id');
     });
+
+    // HU-24 Botón de pánico (solo ciudadanos)
+    Route::post('sos', [SosController::class, 'store'])->middleware(['role:usuario', 'throttle:5,1']);
 
     // HU-25 Círculo de confianza (cada uno maneja solo el suyo)
     Route::prefix('trust-circle')->controller(TrustCircleController::class)->group(function () {

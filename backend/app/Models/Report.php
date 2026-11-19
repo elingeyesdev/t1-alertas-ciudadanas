@@ -25,6 +25,7 @@ class Report extends Model
         'status',
         'creator_id',
         'report_type_id',
+        'is_sos',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class Report extends Model
             'longitude' => 'float',
             'weight' => 'integer',
             'verified' => 'boolean',
+            'is_sos' => 'boolean',
             'expires_at' => 'datetime',
             'status' => StateReport::class,
         ];
