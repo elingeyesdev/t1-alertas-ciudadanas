@@ -10,12 +10,13 @@ class Dispatch extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['recorded_at', 'state', 'report_id', 'destination_id', 'attended_by'];
+    protected $fillable = ['recorded_at', 'departed_at', 'state', 'report_id', 'destination_id', 'attended_by'];
 
     protected function casts(): array
     {
         return [
             'recorded_at' => 'datetime',
+            'departed_at' => 'datetime',
             'state' => StateType::class,
         ];
     }
