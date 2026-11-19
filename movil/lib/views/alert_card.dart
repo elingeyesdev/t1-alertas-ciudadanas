@@ -292,6 +292,14 @@ class _AlertCardState extends State<AlertCard> {
           const SizedBox(height: 12),
 
           // 4. Carrusel de imágenes interactivo
+          if (!widget.isInBottomSheet && widget.alert.videosCount > 0)
+            ListTile(
+              leading: const Icon(Icons.play_circle_outline),
+              title: Text(widget.alert.videosCount == 1
+                  ? 'Ver video'
+                  : 'Ver ${widget.alert.videosCount} videos'),
+              onTap: widget.onTap,
+            ),
           if (widget.alert.images.isNotEmpty)
             widget.isInBottomSheet
                 ? SizedBox(
@@ -396,8 +404,8 @@ class _AlertCardState extends State<AlertCard> {
                   Expanded(
                     child: TextButton.icon(
                       onPressed: widget.onTap,
-                      icon: Icon(Icons.explore, color: onSurface, size: 16),
-                      label: Text('NAVEGAR', style: TextStyle(color: onSurface, fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: Icon(Icons.visibility_outlined, color: onSurface, size: 16),
+                      label: Text('VER ALERTA', style: TextStyle(color: onSurface, fontWeight: FontWeight.bold, fontSize: 13)),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         backgroundColor: Colors.transparent,

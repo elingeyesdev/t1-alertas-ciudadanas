@@ -23,6 +23,7 @@ services:
       - local-vendor:/var/www/html/vendor
       - local-public-build:/var/www/html/public/build
       - uploads:/var/www/html/storage/app/public
+      - ./docker/apache.conf:/etc/apache2/sites-available/000-default.conf:ro
 
   redis:
     image: docker.io/library/redis:7-bookworm

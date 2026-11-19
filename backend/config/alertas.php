@@ -65,7 +65,7 @@ return [
 
     // Panel de administración Blade/Tabler (/panel)
     'panel' => [
-        // Token PÚBLICO de Mapbox (pk...). Vacío = mapa de OpenStreetMap.
+        // Token PÚBLICO de Mapbox (pk...). Obligatorio para mostrar los mapas del panel.
         'mapbox_token' => env('MAPBOX_ACCESS_TOKEN', ''),
         // Centro inicial de los mapas: Santa Cruz de la Sierra
         'map_center' => [(float) env('MAP_CENTER_LAT', -17.7833), (float) env('MAP_CENTER_LNG', -63.1821)],

@@ -11,7 +11,13 @@ use App\Models\Report;
 use App\Services\CaseTracking;
 use App\Services\CommentService;
 use App\Services\ReportService;
+use App\Support\Dt;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 class ReportController extends Controller
 {
@@ -51,6 +57,28 @@ class ReportController extends Controller
     public function verify(int $id)
     {
         return $this->reports->verifyReport($id);
+    }
+
+    public function uploadVideo(Request $request, int $id)
+    {
+        $request->validate(['video' => ['required', 'file', 'mimetypes:video/mp4', 'max:20480']]);
+        $report = Report::findOrFail($id);
+        $path = $request->file('video')->storeAs('report-videos', Str::uuid().'.mp4', 'public');
+        abort_if($path === false, 500, 'No se pudo guardar el video');
+
+        try {
+            $videoId = DB::table('report_videos')->insertGetId([
+                'report_id' => $report->id,
+                'uploaded_by' => $request->user()->id,
+                'path' => $path,
+                'uploaded_at' => now(),
+            ]);
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($path);
+            throw $exception;
+        }
+
+        return response()->json(['id' => $videoId, 'type' => 'video', 'url' => '/storage/'.$path], 201);
     }
 
     public function index(Request $request)
@@ -99,7 +127,36 @@ class ReportController extends Controller
 
     public function show(int $id)
     {
-        return $this->reports->findOne($id);
+        $detail = $this->reports->findOne($id);
+        $report = $detail->resource;
+        $report->load('dispatches.destination', 'dispatches.attendedBy.authorityProfile');
+
+        $photos = $report->images->map(fn ($image) => [
+            'id' => $image->id,
+            'type' => 'image',
+            'url' => str_starts_with($image->cloudinary_id ?? '', 'local:')
+                ? '/storage/'.substr($image->cloudinary_id, 6) : $image->url,
+            'uploaded_at' => Dt::iso($image->uploaded_at),
+        ]);
+        $videos = DB::table('report_videos')->where('report_id', $id)->get()
+            ->map(fn ($video) => [
+                'id' => $video->id,
+                'type' => 'video',
+                'url' => '/storage/'.$video->path,
+                'uploaded_at' => Dt::iso(Carbon::parse($video->uploaded_at)),
+            ]);
+        $assignments = $report->dispatches->map(fn ($dispatch) => [
+            'type' => $dispatch->attendedBy?->authorityProfile?->profile_type?->value
+                ?? $dispatch->destination?->installation_type?->value,
+            'unit' => $dispatch->destination?->name,
+            'state' => $dispatch->state?->value,
+        ])->values();
+        $report->unsetRelation('dispatches');
+
+        return response()->json($detail->resolve(request()) + [
+            'evidence' => $photos->concat($videos)->sortBy(['uploaded_at', 'type', 'id'])->values(),
+            'assignments' => $assignments,
+        ]);
     }
 
     /**

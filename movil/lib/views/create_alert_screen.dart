@@ -1,3 +1,4 @@
+import 'alert_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:alertas_ciudadanas/core/utils/error_handler.dart';
 import 'package:alertas_ciudadanas/views/main_navigation_screen.dart';
@@ -36,6 +37,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
   AlertTypeModel? _selectedType;
 
   File? image;
+  XFile? _video;
   double _aspectRatio = 1.0;
 
   final picker = ImagePicker();
@@ -68,6 +70,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
       _descriptionError = null;
       _typeError = null;
       image = null;
+      _video = null;
       _aspectRatio = 1.0;
       _isSubmitting = false;
       _isLoadingLocation = true;
@@ -89,7 +92,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
     super.initState();
     _loadCurrentLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (image == null) {
+      if (image == null && _video == null) {
         pickImage();
       }
     });
@@ -431,6 +434,29 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
     return _typeError == null && _descriptionError == null;
   }
 
+  Future<void> _pickReportVideo() async {
+    try {
+      final file = await pickEvidence(context, video: true);
+      if (file == null || !mounted) return;
+      final valid = file.name.toLowerCase().endsWith('.mp4') &&
+          await file.length() <= 20 * 1024 * 1024;
+      if (!mounted) return;
+      if (valid) {
+        setState(() => _video = file);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Elige un video MP4 de hasta 20 MB.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo seleccionar el video.')),
+        );
+      }
+    }
+  }
+
   Future<void> _submitAlert() async {
     if (!_validateTypeAndDescription()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -443,10 +469,10 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
       return;
     }
 
-    if (image == null) {
+    if (image == null && _video == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Debes adjuntar una imagen del incidente'),
+          content: Text('Debes adjuntar una foto o un video del incidente'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 4),
         ),
@@ -517,6 +543,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
   Future<void> _createActualAlert() async {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final video = _video;
     setState(() => _isSubmitting = true);
     try {
       final alertVM = context.read<AlertViewModel>();
@@ -536,6 +563,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
         imageFile: image,
       ).timeout(const Duration(seconds: 15));
 
+      if (!mounted) return;
       // Datos para la confirmación (se guardan antes de limpiar el formulario)
       final sentType = _selectedType?.name ?? 'Alerta';
       final sentDescription = _descriptionController.text.trim();
@@ -543,6 +571,7 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
       _descriptionController.clear();
       setState(() {
         image = null;
+        _video = null;
         _selectedType = null;
         _descriptionError = null;
         _typeError = null;
@@ -551,6 +580,13 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
       widget.onCreated?.call();
 
       MainNavigationScreen.navigationKey.currentState?.selectTab(3);
+
+      if (video != null && navigator.mounted) {
+        await navigator.push(MaterialPageRoute<void>(
+          builder: (_) => AlertDetailScreen(reportId: report.id, pendingVideo: video),
+        ));
+        return;
+      }
 
       final navContext = MainNavigationScreen.navigationKey.currentContext;
       if (navContext != null && navContext.mounted) {
@@ -908,6 +944,14 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
   Future<void> _attachToExistingAlert(int reportId) async {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final video = _video;
+    if (video != null && image == null) {
+      setState(() => _video = null);
+      await navigator.push(MaterialPageRoute<void>(
+        builder: (_) => AlertDetailScreen(reportId: reportId, pendingVideo: video),
+      ));
+      return;
+    }
     if (image == null) {
       scaffoldMessenger.showSnackBar(
         const SnackBar(
@@ -938,6 +982,13 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
       
       final navContext = MainNavigationScreen.navigationKey.currentContext;
       if (navContext != null && navContext.mounted) {
+        if (video != null) {
+          setState(() => _video = null);
+          await Navigator.of(navContext).push(MaterialPageRoute<void>(
+            builder: (_) => AlertDetailScreen(reportId: reportId, pendingVideo: video),
+          ));
+          return;
+        }
         ScaffoldMessenger.of(navContext).showSnackBar(
           const SnackBar(
             content: Text('Has aportado una imagen a la alerta existente exitosamente.'),
@@ -1022,6 +1073,17 @@ class CreateAlertScreenState extends State<CreateAlertScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.videocam_outlined),
+                title: Text(_video?.name ?? 'Adjuntar video MP4'),
+                subtitle: const Text('Hasta 20 MB'),
+                onTap: _isSubmitting ? null : _pickReportVideo,
+                trailing: _video == null ? null : IconButton(
+                  tooltip: 'Quitar video',
+                  onPressed: _isSubmitting ? null : () => setState(() => _video = null),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
               if (image != null)
                 GestureDetector(
                   onTap: pickImage,

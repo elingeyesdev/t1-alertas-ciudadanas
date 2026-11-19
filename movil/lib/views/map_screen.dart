@@ -1,3 +1,4 @@
+import 'alert_detail_screen.dart';
 import 'package:alertas_ciudadanas/core/config/mapbox_config.dart';
 import 'package:alertas_ciudadanas/core/utils/role_utils.dart';
 import 'dart:io';
@@ -1370,11 +1371,20 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
   }
 
   void _showAlertBottomSheet(AlertModel alert) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => AlertDetailScreen(
+        reportId: alert.id,
+        actions: () => _showAlertActions(alert),
+      ),
+    ));
+  }
+
+  Future<void> _showAlertActions(AlertModel alert) async {
     if (_isBottomSheetOpen) {
       Navigator.of(context).pop(); // close previous first
     }
     _isBottomSheetOpen = true;
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(

@@ -28,6 +28,7 @@ class ReportResource extends JsonResource
             'expires_at' => Dt::iso($this->expires_at),
             'zone' => $this->zone ?? 'Sin zona',
             'images' => ImageResource::collection($this->whenLoaded('images', fn () => $this->images, collect())),
+            'videos_count' => $this->whenCounted('videos'),
         ];
 
         if ($this->relationLoaded('dispatches')) {

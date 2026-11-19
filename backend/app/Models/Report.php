@@ -56,6 +56,9 @@ class Report extends Model
         return $this->hasMany(Image::class);
     }
 
+    public function videos(): HasMany
+    {
+        return $this->hasMany(ReportVideo::class);
     public function caseEvents(): HasMany
     {
         return $this->hasMany(CaseEvent::class)->orderBy('id');

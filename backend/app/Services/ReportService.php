@@ -118,7 +118,7 @@ class ReportService
     public function findByUserId(string $userId)
     {
         return ReportResource::collection(
-            Report::with(self::WITH)->where('creator_id', $userId)->orderByDesc('id')->get()
+            Report::with(self::WITH)->withCount('videos')->where('creator_id', $userId)->orderByDesc('id')->get()
         );
     }
 
@@ -135,7 +135,7 @@ class ReportService
             'emergencias' => '%emergencia%',
         ];
 
-        $query = Report::with(self::WITH)
+        $query = Report::with(self::WITH)->withCount('videos')
             ->when(filter_var($filters['includeDeleted'] ?? false, FILTER_VALIDATE_BOOLEAN), fn ($q) => $q->withTrashed())
             ->when($filters['typeId'] ?? null, fn ($q, $id) => $q->where('report_type_id', (int) $id))
             ->when($categories[$filters['category'] ?? ''] ?? null, fn ($q, $like) => $q->whereHas('type', fn ($t) => $t->where('name', 'ilike', $like)))

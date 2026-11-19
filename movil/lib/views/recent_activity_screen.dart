@@ -1,3 +1,4 @@
+import 'alert_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:alertas_ciudadanas/core/utils/error_handler.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -518,11 +519,20 @@ class RecentActivityScreenState extends State<RecentActivityScreen> {
                                         index,
                                       ) {
                                         final alert = displayAlerts[index];
-                                        return AlertCard(
-                                          alert: alert,
-                                          onTap: () =>
-                                              widget.onAlertTap?.call(alert),
-                                          onVerify: () => _verifyAlert(alert),
+                                        void openDetail() {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => AlertDetailScreen(reportId: alert.id),
+                                            ),
+                                          );
+                                        }
+                                        return InkWell(
+                                          onTap: openDetail,
+                                          child: AlertCard(
+                                            alert: alert,
+                                            onTap: openDetail,
+                                            onVerify: () => _verifyAlert(alert),
+                                          ),
                                         );
                                       }, childCount: displayAlerts.length),
                                     ),

@@ -11,4 +11,4 @@ Starter workspace for a Laravel backend and Flutter mobile application. No alert
 
 Run backend checks with `cd web && php artisan test`; run mobile checks with `cd movil && flutter test` and `flutter analyze`.
 
-See each project's README for setup details. `docs/` contains project documentation; `.github/workflows/` is reserved for CI workflows.
+See each project's README for setup details. For the backend panel with Podman, see [docs/levantar-backend-web-podman.md](docs/levantar-backend-web-podman.md). `docs/` contains project documentation; `.github/workflows/` is reserved for CI workflows.
