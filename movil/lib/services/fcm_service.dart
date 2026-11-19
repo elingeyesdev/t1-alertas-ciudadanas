@@ -17,6 +17,7 @@ class FcmService {
   StreamSubscription<RemoteMessage>? _openedMessages;
   bool _disposed = false;
   void Function(int)? _onAssignmentOpened;
+  void Function(int)? _onCaseOpened;
   /// true si Firebase se inicializó (existe google-services.json)
   bool get _firebaseReady => Firebase.apps.isNotEmpty;
 
@@ -25,8 +26,9 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId, {void Function(int)? onAssignmentOpened}) async {
+  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened}) async {
     _onAssignmentOpened = onAssignmentOpened;
+    _onCaseOpened = onCaseOpened;
     if (!_firebaseReady) {
       debugPrint('FCM omitido: Firebase no está configurado');
       return;
@@ -111,9 +113,10 @@ class FcmService {
       
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
-      final isVerified = message.data['type'] == 'report_verified';
+      final isVerified = message.data['type'] == 'report_verified' || message.data['type'] == 'case_update';
       final alertId = _ambulanceId(message);
       final assignmentId = _assignmentId(message);
+      final caseId = _caseId(message);
       if (alertId != null) unawaited(_recordReceipt(alertId, 'foreground'));
       final playedSiren = alertId != null &&
           !kIsWeb && defaultTargetPlatform == TargetPlatform.android &&
@@ -130,7 +133,7 @@ class FcmService {
               alertId != null ? _ambulanceChannel : (isVerified ? 'verified_channel' : 'alert_channel'),
               alertId != null ? 'Avisos de ambulancias' : (isVerified ? 'Verificaciones' : 'Alertas'),
               channelDescription: alertId != null ? 'Avisos cuando una ambulancia se aproxima a tu ubicación.' : isVerified
-                  ? 'Cuando una autoridad verifica tu reporte'
+                  ? 'Cuando cambia el estado de tu reporte'
                   : 'Canal para alertas de incidentes cercanos',
               importance: Importance.max,
               priority: Priority.high,
@@ -141,7 +144,9 @@ class FcmService {
               icon: '@mipmap/ic_launcher',
             ),
           ),
-          payload: assignmentId == null ? alertId : 'dispatch:$assignmentId',
+          payload: assignmentId != null
+              ? 'dispatch:$assignmentId'
+              : (caseId != null ? 'case:$caseId' : alertId),
         );
       }
       
@@ -165,6 +170,11 @@ class FcmService {
           : null;
 
   void _recordOpened(RemoteMessage message) {
+    final caseId = _caseId(message);
+    if (caseId != null) {
+      _onCaseOpened?.call(caseId);
+      return;
+    }
     final assignmentId = _assignmentId(message);
     if (assignmentId != null) {
       _onAssignmentOpened?.call(assignmentId);
@@ -178,8 +188,18 @@ class FcmService {
       ? int.tryParse('${message.data['dispatch_id']}')
       : null;
 
+  /// HU-26: push de seguimiento del caso (verificado, unidad asignada, en camino...).
+  int? _caseId(RemoteMessage message) => message.data['type'] == 'case_update'
+      ? int.tryParse('${message.data['reportId']}')
+      : null;
+
   void _openPayload(String? payload) {
     if (_disposed || payload == null) return;
+    if (payload.startsWith('case:')) {
+      final id = int.tryParse(payload.substring('case:'.length));
+      if (id != null) _onCaseOpened?.call(id);
+      return;
+    }
     if (payload.startsWith('dispatch:')) {
       final id = int.tryParse(payload.substring('dispatch:'.length));
       if (id != null) _onAssignmentOpened?.call(id);
