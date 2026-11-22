@@ -6,12 +6,10 @@ use App\Enums\StateReport;
 use App\Http\Requests\IncidentReportFilters;
 use App\Models\Report;
 use App\Models\ReportType;
+use App\Services\IncidentWorkbook;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
-use OpenSpout\Common\Entity\Cell\StringCell;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -36,38 +34,16 @@ class IncidentReportsController extends PanelController
         ]);
     }
 
-    public function excel(IncidentReportFilters $request): BinaryFileResponse
+    public function excel(IncidentReportFilters $request, IncidentWorkbook $workbook): BinaryFileResponse
     {
         $filters = $request->validated();
-        $timezone = config('alertas.display_timezone');
-        $incidents = $this->incidents($filters)
-            ->select('id', 'created_at', 'report_type_id', 'status', 'verified')
-            ->with('type:id,name')
-            ->lazyById();
-
         $path = tempnam(sys_get_temp_dir(), 'incidentes-');
         if ($path === false) {
             throw new RuntimeException('No se pudo crear el archivo temporal de incidentes.');
         }
 
         try {
-            $writer = new Writer;
-            $writer->openToFile($path);
-            try {
-                $writer->getCurrentSheet()->setName('Incidentes');
-                $writer->addRow(Row::fromValues(['Fecha', 'Tipo', 'Estado', 'Verificado']));
-
-                foreach ($incidents as $incident) {
-                    $writer->addRow(new Row([
-                        new StringCell($incident->created_at->timezone($timezone)->toDateString(), null),
-                        new StringCell($incident->type->name, null),
-                        new StringCell($incident->status->value, null),
-                        new StringCell($incident->verified ? 'Sí' : 'No', null),
-                    ]));
-                }
-            } finally {
-                $writer->close();
-            }
+            $workbook->write($path, $this->incidents($filters));
 
             clearstatcache(true, $path);
 

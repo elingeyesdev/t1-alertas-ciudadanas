@@ -44,6 +44,10 @@
     </div>
 
     @if ($errors->isEmpty())
+        <p class="text-secondary">
+            El Excel incluye incidentes, despachos, actividad de comentarios y seguimiento. Los votos de rechazo son
+            comunitarios. El sistema registra la confirmación oficial de un incidente, pero no un rechazo oficial.
+        </p>
         <div class="row row-cards mb-3">
             <div class="col-sm-6 col-lg-3">@include('panel.partials.stat', ['label' => 'Total de incidentes', 'value' => $stats['total'], 'icon' => 'ti-list', 'color' => 'blue'])</div>
             <div class="col-sm-6 col-lg-3">@include('panel.partials.stat', ['label' => 'Activos', 'value' => $stats['active'], 'icon' => 'ti-alert-triangle', 'color' => 'green'])</div>
