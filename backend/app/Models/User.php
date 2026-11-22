@@ -33,6 +33,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'last_latitude' => 'float',
+            'location_sharing' => 'boolean',
             'last_longitude' => 'float',
         ];
     }

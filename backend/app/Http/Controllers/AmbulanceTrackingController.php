@@ -54,6 +54,9 @@ class AmbulanceTrackingController extends Controller
         $request->validate(['enabled' => ['required', 'boolean']]);
         $userId = $request->user()->id;
         $locations = DB::table('ambulance_alert_locations');
+        // HU-29: sin compartir ubicación no se pueden activar los avisos de ambulancia
+        abort_if($request->boolean('enabled') && ! $request->user()->location_sharing, 409,
+            'Activa «Compartir mi ubicación» en Ajustes para recibir avisos de ambulancias.');
         if ($request->boolean('enabled')) {
             $locations->insertOrIgnore(['user_id' => $userId]);
         } else {
@@ -82,6 +85,9 @@ class AmbulanceTrackingController extends Controller
 
     public function citizenPosition(EmergencyPositionRequest $request)
     {
+        if (! $request->user()->location_sharing) {
+            return response()->noContent(); // HU-29: no se guarda nada
+        }
         $position = $request->position();
         DB::update(<<<'SQL'
             UPDATE ambulance_alert_locations

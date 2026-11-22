@@ -7,6 +7,7 @@ use App\Http\Requests\PublicRegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Services\AuthService;
+use App\Services\LocationPrivacy;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
@@ -34,6 +35,20 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return new UserResource($request->user());
+    }
+
+    /** GET /api/auth/location-sharing — HU-29 */
+    public function locationSharing(Request $request, LocationPrivacy $privacy)
+    {
+        return response()->json($privacy->status($request->user()));
+    }
+
+    /** PUT /api/auth/location-sharing — HU-29: al desactivar se borra la última ubicación */
+    public function updateLocationSharing(Request $request, LocationPrivacy $privacy)
+    {
+        $request->validate(['enabled' => ['required', 'boolean']]);
+
+        return response()->json($privacy->set($request->user(), $request->boolean('enabled')));
     }
 
     public function emergencySiren(Request $request)

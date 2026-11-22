@@ -101,9 +101,14 @@ class UserService
             abort(404, "El user con ID {$id} no se encontró");
         }
 
+        // HU-29: si la persona desactivó compartir su ubicación, no se guarda nada.
+        if (! $user->location_sharing) {
+            return ['message' => 'Compartir ubicación está desactivado: no se guardó la ubicación', 'saved' => false];
+        }
+
         $user->forceFill(['last_latitude' => $latitude, 'last_longitude' => $longitude])->save();
 
-        return ['message' => 'Ubicación actualizada correctamente'];
+        return ['message' => 'Ubicación actualizada correctamente', 'saved' => true];
     }
 
     public function updatePassword(string $id, string $current, string $new): array
