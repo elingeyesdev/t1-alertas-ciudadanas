@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\Panel\DashboardController;
+use App\Http\Controllers\Panel\IncidentReportsController;
 use App\Http\Controllers\Panel\MapController;
 use App\Http\Controllers\Panel\ReportController;
 use App\Http\Controllers\Panel\StationController;
@@ -29,6 +30,9 @@ Route::prefix('panel')->name('panel.')->group(function (): void {
         // Mapa en vivo
         Route::get('/mapa', [MapController::class, 'index'])->name('mapa');
         Route::get('/mapa/datos', [MapController::class, 'data'])->name('mapa.datos');
+
+        Route::get('/reportes', [IncidentReportsController::class, 'index'])->name('reportes.index');
+        Route::get('/reportes/excel', [IncidentReportsController::class, 'excel'])->name('reportes.excel');
 
         // Alertas (reportes)
         Route::controller(ReportController::class)->prefix('alertas')->name('alertas.')->group(function (): void {
