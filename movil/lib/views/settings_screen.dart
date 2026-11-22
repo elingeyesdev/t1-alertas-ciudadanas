@@ -114,6 +114,9 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                     ],
+                    // HU-29: control de privacidad de la ubicación
+                    if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
+                      _LocationSharingTile(key: ValueKey('location-${auth.user!.id}')),
                     if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
                       const _AmbulanceSharingTile(),
                     if (auth.user != null && !isStaffRole(auth.user?.roleId, auth.user?.roleName))
@@ -445,6 +448,116 @@ class _EmergencySirenTileState extends State<_EmergencySirenTile> {
       subtitle: const Text('Incendios y disturbios a 150 m o menos. Si la silencias, seguirás recibiendo avisos.'),
       value: _enabled ?? true,
       onChanged: _busy ? null : _save,
+    );
+  }
+}
+
+/// HU-29 Control de privacidad de la ubicación.
+/// Al desactivarlo el servidor borra la última ubicación guardada y deja de
+/// guardar nuevas; la app explica que así no llegan avisos de cercanía.
+class _LocationSharingTile extends StatefulWidget {
+  const _LocationSharingTile({super.key});
+
+  @override
+  State<_LocationSharingTile> createState() => _LocationSharingTileState();
+}
+
+class _LocationSharingTileState extends State<_LocationSharingTile> {
+  static const _endpoint = '/auth/location-sharing';
+  static const _defaultNotice =
+      'Sin compartir tu ubicación no te llegan avisos de alertas cercanas, de ambulancias ni la sirena de emergencias.';
+  bool? _enabled;
+  String _notice = _defaultNotice;
+  bool _busy = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _apply(dynamic data) {
+    if (data is! Map) return;
+    _enabled = data['enabled'] == true;
+    final notice = data['notice'];
+    if (notice is String && notice.isNotEmpty) _notice = notice;
+  }
+
+  Future<void> _load() async {
+    setState(() => _busy = true);
+    try {
+      final response = await dioClient.dio.get(_endpoint);
+      if (mounted) setState(() => _apply(response.data));
+    } catch (_) {
+      if (mounted) setState(() => _enabled = null);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _change(bool enabled) async {
+    if (!enabled) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('¿Dejar de compartir tu ubicación?'),
+          content: Text('$_notice\n\nTambién se borrará la última ubicación que guardamos de ti.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Desactivar')),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      final response = await dioClient.dio.put(_endpoint, data: {'enabled': enabled});
+      if (!mounted) return;
+      setState(() => _apply(response.data));
+      // Sin ubicación tampoco hay avisos de ambulancia: se apaga ese ajuste en la app.
+      if (!enabled && AmbulanceSharing.instance.enabled == true) {
+        try {
+          await AmbulanceSharing.instance.setEnabled(false);
+        } catch (_) {}
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(enabled
+              ? 'Ubicación activada: volverás a recibir avisos cercanos.'
+              : 'Ubicación desactivada y última ubicación borrada.'),
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar el ajuste de ubicación.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const title = Text('Compartir mi ubicación');
+    if (_enabled == null && !_busy) {
+      return ListTile(
+        title: title,
+        subtitle: const Text('No se pudo cargar el ajuste.'),
+        trailing: TextButton(onPressed: _load, child: const Text('Reintentar')),
+      );
+    }
+    final enabled = _enabled ?? true;
+    return SwitchListTile(
+      title: title,
+      subtitle: Text(enabled
+          ? 'Se usa para avisarte de alertas cercanas. Puedes desactivarlo cuando quieras.'
+          : _notice),
+      value: enabled,
+      onChanged: _busy ? null : _change,
     );
   }
 }
