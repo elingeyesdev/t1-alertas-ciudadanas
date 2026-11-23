@@ -4,6 +4,7 @@
         ['panel.index', 'panel.index', 'ti-layout-dashboard', 'Inicio'],
         ['panel.mapa', 'panel.mapa*', 'ti-map-2', 'Mapa en vivo'],
         ['panel.alertas.index', 'panel.alertas.*', 'ti-alert-triangle', 'Alertas'],
+        ['panel.reportes.index', 'panel.reportes.*', 'ti-report-analytics', 'Reportes'],
         ['panel.usuarios.index', 'panel.usuarios.*', 'ti-users', 'Usuarios'],
         ['panel.estaciones.index', 'panel.estaciones.*', 'ti-building-hospital', 'Estaciones'],
     ];
