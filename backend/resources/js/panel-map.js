@@ -20,7 +20,11 @@ if (mapEl) {
         stations: L.layerGroup().addTo(map),
         trackings: L.layerGroup().addTo(map),
         risk: L.layerGroup(),
+        publicAlerts: L.layerGroup().addTo(map),
     }
+    // HU-32: avisos preventivos (salud, viaje, desastres) como círculos de su zona
+    const publicAlertStyle = { salud: '#d6336c', viaje: '#f76707', desastre: '#ae3ec9' }
+    const publicAlertCircles = new Map()
     const state = { reports: new Map(), trackings: new Map(), stations: [] }
     const reportMarkers = new Map()
     const trackingMarkers = new Map()
@@ -201,6 +205,22 @@ if (mapEl) {
         })
     }
 
+    function upsertPublicAlert(alert) {
+        if (!alert?.coordinates || new Date(alert.expires_at).getTime() <= Date.now()) return
+        removePublicAlert(alert.id)
+        const color = publicAlertStyle[alert.category] || '#ae3ec9'
+        const until = new Date(alert.expires_at).toLocaleString('es-BO', { dateStyle: 'short', timeStyle: 'short' })
+        const circle = L.circle(latLng(alert.coordinates), { radius: alert.radius_m, color, fillColor: color, fillOpacity: 0.12, weight: 2, dashArray: '6 4' })
+            .bindPopup(`<div class="small text-secondary">${escapeHtml(alert.category_label)}</div><strong>${escapeHtml(alert.title)}</strong><div>${escapeHtml(alert.message)}</div><div class="small text-secondary mt-1">Vigente hasta ${escapeHtml(until)}</div>`)
+            .addTo(layers.publicAlerts)
+        publicAlertCircles.set(alert.id, circle)
+    }
+
+    function removePublicAlert(id) {
+        publicAlertCircles.get(id)?.remove()
+        publicAlertCircles.delete(id)
+    }
+
     async function load() {
         const response = await fetch(config.mapDataUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
         if (!response.ok) throw new Error('No se pudo cargar el mapa')
@@ -212,6 +232,8 @@ if (mapEl) {
         renderStations()
         data.trackings.forEach(upsertTracking)
         renderTrackings()
+        layers.publicAlerts.clearLayers(); publicAlertCircles.clear()
+        ;(data.public_alerts || []).forEach(upsertPublicAlert)
         renderList()
     }
 
@@ -233,6 +255,9 @@ if (mapEl) {
             upsertReport(report, true)
             renderList()
         })
+        echo.channel('public-alerts')
+            .listen('.publicAlert', (alert) => upsertPublicAlert(alert))
+            .listen('.publicAlertEnded', ({ id }) => removePublicAlert(id))
         echo.channel('trackings')
             .listen('.tracking_started', (tracking) => upsertTracking({ ...tracking, id: tracking.id || tracking.userId }))
             .listen('.tracking_stopped', ({ userId }) => removeTracking(userId))

@@ -24,6 +24,9 @@ import 'package:alertas_ciudadanas/services/emergency_station_service.dart';
 import 'package:alertas_ciudadanas/services/route_corridor_monitor_service.dart';
 import 'package:alertas_ciudadanas/core/emergency_station_utils.dart';
 import 'package:alertas_ciudadanas/models/emergency_station_model.dart';
+import 'package:alertas_ciudadanas/models/public_alert_model.dart';
+import 'package:alertas_ciudadanas/services/public_alert_service.dart';
+import 'package:alertas_ciudadanas/views/widgets/public_alerts_layer.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -53,6 +56,9 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
   List<EmergencyStationModel> _emergencyStations = const [];
   List<EmergencyStationModel> _nearestEmergencyStations = const [];
   final _emergencyStationService = EmergencyStationService();
+  // HU-32 avisos preventivos (salud, viaje o desastres naturales)
+  List<PublicAlertModel> _publicAlerts = const [];
+  final _publicAlertService = PublicAlertService();
 
   // Tracking
   final _trackingService = TrackingService();
@@ -844,9 +850,20 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
     }
   }
 
+  Future<void> _loadPublicAlerts() async {
+    try {
+      final alerts = await _publicAlertService.findActive();
+      if (!mounted) return;
+      setState(() => _publicAlerts = alerts);
+    } catch (e) {
+      debugPrint('Error cargando avisos preventivos: $e');
+    }
+  }
+
   Future<void> _loadAlerts() async {
     if (!mounted) return;
-    
+    unawaited(_loadPublicAlerts());
+
     try {
       final alertVM = context.read<AlertViewModel>();
       final user = context.read<AuthViewModel>().user;
@@ -1543,6 +1560,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                         );
                       },
                     ),
+                    CircleLayer(circles: publicAlertCircles(_publicAlerts)),
                     if (_selectedVehicleId != null)
                       ...() {
                         final selectedVehicle = _activeVehicles
@@ -1652,6 +1670,10 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                     MarkerLayer(
                       markers: [
                         ..._buildEmergencyStationMarkers(),
+                        ...publicAlertMarkers(
+                          _publicAlerts,
+                          (alert) => showPublicAlertSheet(context, alert),
+                        ),
                         ..._buildAlertMarkers(),
                         if (_locationFromGps) ..._buildTrackingMarkers(context),
                       ],
