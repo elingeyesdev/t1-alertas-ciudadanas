@@ -43,9 +43,13 @@
                                 <input class="form-check-input" type="checkbox" data-layer="trackings" checked>
                                 <span class="form-check-label"><span class="legend-dot bg-yellow"></span>Unidades en camino</span>
                             </label>
-                            <label class="form-check form-switch mb-0">
+                            <label class="form-check form-switch mb-1">
                                 <input class="form-check-input" type="checkbox" data-layer="risk">
                                 <span class="form-check-label"><span class="legend-dot bg-orange"></span>Zonas de riesgo</span>
+                            </label>
+                            <label class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" data-layer="publicAlerts" checked>
+                                <span class="form-check-label"><span class="legend-dot bg-purple"></span>Avisos preventivos</span>
                             </label>
                         </div>
                     </div>

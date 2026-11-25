@@ -9,15 +9,30 @@ document.querySelectorAll('[data-location-picker]').forEach((element) => {
     const initial = latInput.value && lngInput.value ? [Number(latInput.value), Number(lngInput.value)] : null
     const map = createMap(element, { center: initial || DEFAULT_CENTER, zoom: initial ? 16 : 13 })
     let marker = null
+    // HU-32: si el formulario tiene un radio (avisos preventivos) se dibuja la zona
+    const radiusInput = form.querySelector('[data-picker-radius]')
+    let circle = null
+    const drawZone = () => {
+        if (!radiusInput || !marker) return
+        const radius = Number(radiusInput.value) || 0
+        if (!circle) {
+            circle = L.circle(marker.getLatLng(), { radius, color: '#ae3ec9', fillColor: '#ae3ec9', fillOpacity: 0.15, weight: 2 }).addTo(map)
+        } else {
+            circle.setLatLng(marker.getLatLng()).setRadius(radius)
+        }
+        map.fitBounds(circle.getBounds(), { padding: [20, 20], maxZoom: 16 })
+    }
+    radiusInput?.addEventListener('change', drawZone)
 
     const place = (latlng, pan = false) => {
         if (!marker) {
             marker = L.marker(latlng, { draggable: true, icon: pinIcon('red', 'ti-map-pin') }).addTo(map)
-            marker.on('dragend', () => write(marker.getLatLng()))
+            marker.on('dragend', () => { write(marker.getLatLng()); drawZone() })
         } else {
             marker.setLatLng(latlng)
         }
-        if (pan) map.setView(latlng, Math.max(map.getZoom(), 15))
+        if (radiusInput) drawZone()
+        else if (pan) map.setView(latlng, Math.max(map.getZoom(), 15))
     }
     const write = ({ lat, lng }) => {
         latInput.value = lat.toFixed(6)

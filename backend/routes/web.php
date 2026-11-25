@@ -4,6 +4,7 @@ use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\Panel\DashboardController;
 use App\Http\Controllers\Panel\IncidentReportsController;
 use App\Http\Controllers\Panel\MapController;
+use App\Http\Controllers\Panel\PublicAlertController;
 use App\Http\Controllers\Panel\ReportController;
 use App\Http\Controllers\Panel\StationController;
 use App\Http\Controllers\Panel\UserController;
@@ -58,6 +59,15 @@ Route::prefix('panel')->name('panel.')->group(function (): void {
             Route::delete('/{id}', 'destroy')->whereUuid('id')->name('destroy');
             Route::post('/{id}/correo', 'sendMail')->whereUuid('id')->name('mail');
             Route::post('/{id}/credenciales', 'resendCredentials')->whereUuid('id')->name('credentials');
+        });
+
+        // HU-32 Avisos preventivos (salud, viaje o desastres naturales)
+        Route::controller(PublicAlertController::class)->prefix('avisos')->name('avisos.')->group(function (): void {
+            Route::get('/', 'index')->name('index');
+            Route::get('/crear', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::patch('/{id}/finalizar', 'finish')->whereNumber('id')->name('finish');
+            Route::delete('/{id}', 'destroy')->whereNumber('id')->name('destroy');
         });
 
         // Estaciones de emergencia

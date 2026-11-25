@@ -36,6 +36,13 @@ class PanelLabels
         'hospital' => ['Hospital', 'green', 'ti-first-aid-kit'],
     ];
 
+    /** HU-32: tipos de aviso preventivo => [texto, color, ícono]. */
+    public const PUBLIC_ALERT_CATEGORIES = [
+        'salud' => ['Salud', 'pink', 'ti-heartbeat'],
+        'viaje' => ['Viaje', 'orange', 'ti-road'],
+        'desastre' => ['Desastre natural', 'purple', 'ti-tornado'],
+    ];
+
     public static function label(array $map, ?string $key): string
     {
         $value = $map[$key] ?? null;

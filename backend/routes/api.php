@@ -8,6 +8,7 @@ use App\Http\Controllers\EmergencyStationController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PublicAlertController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTypeController;
 use App\Http\Controllers\RoleController;
@@ -110,6 +111,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('join', 'join')->middleware('throttle:10,1');
         Route::delete('memberships/{id}', 'leave')->whereNumber('id');
     });
+
+    // HU-32 Avisos preventivos vigentes (salud, viaje o desastres naturales)
+    Route::get('public-alerts', [PublicAlertController::class, 'index']);
 
     // Comentarios (respuestas)
     Route::post('comments/{id}/replies', [CommentController::class, 'storeReply'])->whereNumber('id');
