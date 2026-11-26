@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\Geo;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -42,5 +44,17 @@ class LocationPrivacy
     public function allows(User $user): bool
     {
         return (bool) $user->location_sharing;
+    }
+
+    public function nearbyCitizenPushRecipients(float $latitude, float $longitude, int $radius): Builder
+    {
+        $query = User::query()
+            ->whereHas('role', fn ($role) => $role->where('name', 'usuario'))
+            ->where('location_sharing', true)
+            ->whereNotNull('fcm_token')
+            ->whereNotNull('last_latitude')
+            ->whereNotNull('last_longitude');
+
+        return Geo::whereWithin($query, $latitude, $longitude, $radius, 'last_latitude', 'last_longitude');
     }
 }

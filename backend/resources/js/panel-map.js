@@ -21,6 +21,7 @@ if (mapEl) {
         trackings: L.layerGroup().addTo(map),
         risk: L.layerGroup(),
         publicAlerts: L.layerGroup().addTo(map),
+        missingCases: L.layerGroup().addTo(map),
     }
     // HU-32: avisos preventivos (salud, viaje, desastres) como círculos de su zona
     const publicAlertStyle = { salud: '#d6336c', viaje: '#f76707', desastre: '#ae3ec9' }
@@ -221,6 +222,44 @@ if (mapEl) {
         publicAlertCircles.delete(id)
     }
 
+    function renderMissingCases(cases) {
+        layers.missingCases.clearLayers()
+        const groups = new Map()
+        for (const item of cases) {
+            const key = [Number(item.latitude).toFixed(6), Number(item.longitude).toFixed(6)].join(',')
+            if (!groups.has(key)) groups.set(key, [])
+            groups.get(key).push(item)
+        }
+        for (const group of groups.values()) {
+            const first = group[0]
+            const label = group.length === 1 ? first.name : `${group.length} casos de desaparición`
+            const color = group.every((item) => item.status === 'found') ? 'green' : 'teal'
+            const icon = group.length > 1 ? 'ti-map-pins' : first.kind === 'pet' ? 'ti-paw' : 'ti-user-search'
+            const marker = L.marker([first.latitude, first.longitude], { icon: pinIcon(color, icon), alt: label })
+                .addTo(layers.missingCases)
+            marker.bindTooltip(() => {
+                const text = document.createElement('span')
+                text.textContent = label
+                return text
+            })
+            if (group.length === 1) {
+                marker.on('click', () => window.location.assign(first.url))
+                continue
+            }
+            const links = document.createElement('ul')
+            links.className = 'list-unstyled mb-0'
+            for (const item of group) {
+                const row = document.createElement('li')
+                const link = document.createElement('a')
+                link.href = item.url
+                link.textContent = item.name + (item.status === 'found' ? ' · Encontrado' : '')
+                row.append(link)
+                links.append(row)
+            }
+            marker.bindPopup(links)
+        }
+    }
+
     async function load() {
         const response = await fetch(config.mapDataUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
         if (!response.ok) throw new Error('No se pudo cargar el mapa')
@@ -234,6 +273,7 @@ if (mapEl) {
         renderTrackings()
         layers.publicAlerts.clearLayers(); publicAlertCircles.clear()
         ;(data.public_alerts || []).forEach(upsertPublicAlert)
+        renderMissingCases(data.missing_cases || [])
         renderList()
     }
 

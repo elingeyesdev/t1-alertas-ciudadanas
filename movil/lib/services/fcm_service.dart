@@ -36,6 +36,7 @@ class FcmService {
   void Function(int)? _onAssignmentOpened;
   void Function(int)? _onCaseOpened;
   void Function(int)? _onReportOpened;
+  void Function(int)? _onMissingCaseOpened;
   /// true si Firebase se inicializó (existe google-services.json)
   bool get _firebaseReady => Firebase.apps.isNotEmpty;
 
@@ -44,10 +45,11 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened, void Function(int)? onReportOpened, VoidCallback? onForegroundReport}) async {
+  Future<void> init(String userId, {void Function(int)? onAssignmentOpened, void Function(int)? onCaseOpened, void Function(int)? onReportOpened, void Function(int)? onMissingCaseOpened, VoidCallback? onForegroundReport}) async {
     _onAssignmentOpened = onAssignmentOpened;
     _onCaseOpened = onCaseOpened;
     _onReportOpened = onReportOpened;
+    _onMissingCaseOpened = onMissingCaseOpened;
     if (!_firebaseReady) {
       debugPrint('FCM omitido: Firebase no está configurado');
       return;
@@ -149,6 +151,7 @@ class FcmService {
       final assignmentId = _assignmentId(message);
       final caseId = _caseId(message);
       final reportId = _nearbyReportId(message);
+      final missingCaseId = _missingCaseId(message);
       final emergencyChannel = switch (message.data['emergency_sound']) {
         'siren' => _emergencySiren,
         'silent' => _emergencySilent,
@@ -161,7 +164,7 @@ class FcmService {
 
       if (_disposed) return;
       if (notification != null && (android != null ||
-          ((alertId != null || emergencyChannel != null) &&
+          ((alertId != null || emergencyChannel != null || missingCaseId != null) &&
               defaultTargetPlatform == TargetPlatform.android))) {
         _localNotificationsPlugin.show(
           id: (assignmentId == null ? alertId?.hashCode : 'dispatch:$assignmentId'.hashCode) ?? notification.hashCode,
@@ -183,7 +186,9 @@ class FcmService {
               icon: '@mipmap/ic_launcher',
             ),
           ),
-          payload: assignmentId != null
+          payload: missingCaseId != null
+              ? 'missing-case:$missingCaseId'
+              : assignmentId != null
               ? 'dispatch:$assignmentId'
               : (caseId != null ? 'case:$caseId' : (reportId != null ? 'report:$reportId' : alertId)),
         );
@@ -210,6 +215,11 @@ class FcmService {
           : null;
 
   void _recordOpened(RemoteMessage message) {
+    final missingCaseId = _missingCaseId(message);
+    if (missingCaseId != null) {
+      _onMissingCaseOpened?.call(missingCaseId);
+      return;
+    }
     final reportId = _nearbyReportId(message);
     if (reportId != null) {
       _onReportOpened?.call(reportId);
@@ -245,8 +255,17 @@ class FcmService {
           ? int.tryParse('${message.data['reportId']}')
           : null;
 
+  int? _missingCaseId(RemoteMessage message) => const {'missing_case', 'missing_case_update'}.contains(message.data['type'])
+      ? int.tryParse('${message.data['missingCaseId']}')
+      : null;
+
   void _openPayload(String? payload) {
     if (_disposed || payload == null) return;
+    if (payload.startsWith('missing-case:')) {
+      final id = int.tryParse(payload.substring('missing-case:'.length));
+      if (id != null) _onMissingCaseOpened?.call(id);
+      return;
+    }
     if (payload.startsWith('report:')) {
       final id = int.tryParse(payload.substring('report:'.length));
       if (id != null) _onReportOpened?.call(id);

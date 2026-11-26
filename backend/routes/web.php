@@ -4,6 +4,7 @@ use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\Panel\DashboardController;
 use App\Http\Controllers\Panel\IncidentReportsController;
 use App\Http\Controllers\Panel\MapController;
+use App\Http\Controllers\Panel\MissingCaseController;
 use App\Http\Controllers\Panel\PublicAlertController;
 use App\Http\Controllers\Panel\ReportController;
 use App\Http\Controllers\Panel\StationController;
@@ -68,6 +69,24 @@ Route::prefix('panel')->name('panel.')->group(function (): void {
             Route::post('/', 'store')->name('store');
             Route::patch('/{id}/finalizar', 'finish')->whereNumber('id')->name('finish');
             Route::delete('/{id}', 'destroy')->whereNumber('id')->name('destroy');
+        });
+
+        Route::controller(MissingCaseController::class)->prefix('desaparecidos')->name('desaparecidos.')->group(function (): void {
+            Route::get('/', 'index')->name('index');
+            Route::get('/crear', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{case}', 'show')->whereNumber('case')->name('show');
+            Route::get('/{case}/photos/{index}', 'showPhoto')->whereNumber(['case', 'index'])->name('photo');
+            Route::get('/{case}/photos/{index}/image', 'photo')->whereNumber(['case', 'index'])->name('photo-image');
+            Route::get('/{case}/contributions/{contribution}/photos/{index}', 'showContributionPhoto')
+                ->whereNumber(['case', 'contribution', 'index'])->name('contribution-photo');
+            Route::get('/{case}/contributions/{contribution}/photos/{index}/image', 'contributionPhoto')
+                ->whereNumber(['case', 'contribution', 'index'])->name('contribution-photo-image');
+            Route::get('/{case}/contributions/{contribution}/video', 'contributionVideo')
+                ->whereNumber(['case', 'contribution'])->name('contribution-video');
+            Route::patch('/{case}/aprobar', 'approve')->whereNumber('case')->name('approve');
+            Route::patch('/{case}/rechazar', 'reject')->whereNumber('case')->name('reject');
+            Route::patch('/{case}/encontrado', 'found')->whereNumber('case')->name('found');
         });
 
         // Estaciones de emergencia

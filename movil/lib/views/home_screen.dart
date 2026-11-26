@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:alertas_ciudadanas/views/main_navigation_screen.dart';
 import 'package:alertas_ciudadanas/views/create_alert_screen.dart';
 import 'package:alertas_ciudadanas/views/emergency_services_screen.dart';
+import 'package:alertas_ciudadanas/views/missing_cases_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:alertas_ciudadanas/viewmodels/auth_viewmodel.dart';
 import 'package:alertas_ciudadanas/viewmodels/tracking_provider.dart';
@@ -252,6 +253,23 @@ class HomeScreen extends StatelessWidget {
                       const SosButton(),
                       const SizedBox(height: 24),
                     ],
+
+                    Card(
+                      margin: EdgeInsets.zero,
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: const Icon(Icons.person_search_outlined),
+                        title: const Text('Desaparecidos'),
+                        subtitle: const Text('Personas y mascotas'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push<void>(
+                          MaterialPageRoute(
+                            builder: (_) => MissingCasesScreen(canSuggest: !isAuthority),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     if (!isAuthority) ...[
                       // 3. Banner informativo inferior

@@ -7,7 +7,6 @@ use App\Events\PublicAlertPublished;
 use App\Http\Resources\PublicAlertResource;
 use App\Models\PublicAlert;
 use App\Models\User;
-use App\Support\Geo;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +21,7 @@ use Throwable;
  */
 class PublicAlerts
 {
-    public function __construct(private readonly FcmService $fcm) {}
+    public function __construct(private readonly FcmService $fcm, private readonly LocationPrivacy $locations) {}
 
     /**
      * @param  array{category: string, title: string, message: string, latitude: float, longitude: float, radius_m: int, hours: int}  $data
@@ -75,14 +74,7 @@ class PublicAlerts
     /** Ciudadanos dentro del círculo que comparten su ubicación (HU-29) y tienen token push. */
     public function recipients(PublicAlert $alert): Collection
     {
-        $query = User::query()
-            ->whereHas('role', fn ($role) => $role->where('name', 'usuario'))
-            ->where('location_sharing', true)
-            ->whereNotNull('fcm_token')
-            ->whereNotNull('last_latitude')
-            ->whereNotNull('last_longitude');
-
-        return Geo::whereWithin($query, $alert->latitude, $alert->longitude, $alert->radius_m, 'last_latitude', 'last_longitude')->get();
+        return $this->locations->nearbyCitizenPushRecipients($alert->latitude, $alert->longitude, $alert->radius_m)->get();
     }
 
     private function notifyZone(PublicAlert $alert): int

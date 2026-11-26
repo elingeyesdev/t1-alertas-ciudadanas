@@ -7,6 +7,7 @@ use App\Http\Resources\EmergencyStationResource;
 use App\Http\Resources\PublicAlertResource;
 use App\Http\Resources\ReportResource;
 use App\Models\EmergencyStation;
+use App\Models\MissingCase;
 use App\Models\PublicAlert;
 use App\Models\Report;
 use App\Services\TrackingService;
@@ -33,6 +34,9 @@ class MapController extends PanelController
             'stations' => EmergencyStationResource::collection(EmergencyStation::orderBy('id')->get())->resolve(),
             'trackings' => $trackings->all(),
             'public_alerts' => PublicAlertResource::collection(PublicAlert::active()->latest()->get())->resolve(),
+            'missing_cases' => MissingCase::onMap()->orderBy('id')
+                ->get(['id', 'name', 'kind', 'status', 'latitude', 'longitude'])
+                ->each(fn ($case) => $case->setAttribute('url', route('panel.desaparecidos.show', $case, absolute: false))),
         ]);
     }
 }
