@@ -7,6 +7,7 @@ use App\Http\Controllers\DispatchController;
 use App\Http\Controllers\EmergencyStationController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\MissingCaseController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicAlertController;
 use App\Http\Controllers\ReportController;
@@ -35,6 +36,19 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
 
 // ---------- Protegidas con JWT ----------
 Route::middleware('auth:api')->group(function () {
+    Route::prefix('missing-cases')->controller(MissingCaseController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::get('/map', 'map');
+        Route::get('/mine', 'mine');
+        Route::post('/suggestions', 'store')->middleware('role:usuario');
+        Route::get('/{id}', 'show')->whereNumber('id');
+        Route::get('/{id}/photos/{index}', 'photo')->whereNumber(['id', 'index']);
+        Route::get('/{id}/contributions', 'contributions')->whereNumber('id');
+        Route::post('/{id}/contributions', 'storeContribution')->middleware('throttle:10,1')->whereNumber('id');
+        Route::get('/{id}/contributions/{contribution}/photos/{index}', 'contributionPhoto')->whereNumber(['id', 'contribution', 'index']);
+        Route::get('/{id}/contributions/{contribution}/video', 'contributionVideo')->whereNumber(['id', 'contribution']);
+    });
+
 
     Route::get('/', fn () => 'Hello World!')->middleware('role:admin');
 

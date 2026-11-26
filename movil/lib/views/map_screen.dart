@@ -25,7 +25,10 @@ import 'package:alertas_ciudadanas/services/route_corridor_monitor_service.dart'
 import 'package:alertas_ciudadanas/core/emergency_station_utils.dart';
 import 'package:alertas_ciudadanas/models/emergency_station_model.dart';
 import 'package:alertas_ciudadanas/models/public_alert_model.dart';
+import 'package:alertas_ciudadanas/models/missing_case.dart';
+import 'package:alertas_ciudadanas/services/missing_case_service.dart';
 import 'package:alertas_ciudadanas/services/public_alert_service.dart';
+import 'package:alertas_ciudadanas/views/widgets/missing_case_markers.dart';
 import 'package:alertas_ciudadanas/views/widgets/public_alerts_layer.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -59,6 +62,8 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
   // HU-32 avisos preventivos (salud, viaje o desastres naturales)
   List<PublicAlertModel> _publicAlerts = const [];
   final _publicAlertService = PublicAlertService();
+  List<MissingCasePin> _missingCases = const [];
+  final _missingCaseService = MissingCaseService();
 
   // Tracking
   final _trackingService = TrackingService();
@@ -863,6 +868,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
   Future<void> _loadAlerts() async {
     if (!mounted) return;
     unawaited(_loadPublicAlerts());
+    unawaited(_loadMissingCases());
 
     try {
       final alertVM = context.read<AlertViewModel>();
@@ -880,6 +886,15 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
       await context.read<RiskZoneProvider>().updateFromAlerts(filtered);
     } catch (e) {
       debugPrint('Error al cargar alertas: $e');
+    }
+  }
+
+  Future<void> _loadMissingCases() async {
+    try {
+      final cases = await _missingCaseService.map();
+      if (mounted) setState(() => _missingCases = cases);
+    } catch (error) {
+      debugPrint('Error cargando casos de desaparición: ${error.runtimeType}');
     }
   }
 
@@ -1676,6 +1691,7 @@ class MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin
                         ),
                         ..._buildAlertMarkers(),
                         if (_locationFromGps) ..._buildTrackingMarkers(context),
+                        ...missingCaseMarkers(context, _missingCases),
                       ],
                     ),
                   ],

@@ -8,6 +8,7 @@
         ['panel.usuarios.index', 'panel.usuarios.*', 'ti-users', 'Usuarios'],
         ['panel.estaciones.index', 'panel.estaciones.*', 'ti-building-hospital', 'Estaciones'],
         ['panel.avisos.index', 'panel.avisos.*', 'ti-speakerphone', 'Avisos preventivos'],
+        ['panel.desaparecidos.index', 'panel.desaparecidos.*', 'ti-search', 'Desaparecidos'],
     ];
     $panelConfig = [
         'mapboxToken' => config('alertas.panel.mapbox_token'),

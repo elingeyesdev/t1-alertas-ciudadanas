@@ -6,7 +6,7 @@ class DioClient {
   late final Dio _dio;
   final SecureStorageService _storage = SecureStorageService();
 
-  DioClient() {
+  DioClient({bool logBodies = true}) {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.apiBaseUrl ,
@@ -34,10 +34,12 @@ class DioClient {
     );
 
     // Add interceptors for logging or auth if needed
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-    ));
+    if (logBodies) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+      ));
+    }
   }
 
   Dio get dio => _dio;
